@@ -1,0 +1,54 @@
+{
+  "name": "xclaude-cli",
+  "version": "0.1.2",
+  "description": "Run Claude Code under several claude.ai logins at once, with shared conversations and history",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "accounts",
+    "cli",
+    "tmux"
+  ],
+  "homepage": "https://github.com/ArmCyber/xclaude-cli#readme",
+  "bugs": {
+    "url": "https://github.com/ArmCyber/xclaude-cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArmCyber/xclaude-cli.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "xclaude": "dist/xclaude.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.15"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p .",
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test --test-timeout=120000 \"test/**/*.test.ts\"",
+    "check": "npm run build && npm run typecheck && npm test",
+    "prepack": "npm run build",
+    "check:node22": "bash scripts/check-node22.sh"
+  },
+  "devDependencies": {
+    "@types/node": "~22.15.35",
+    "esbuild": "^0.28.2",
+    "proper-lockfile": "^4.1.2",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
