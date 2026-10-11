@@ -11,10 +11,12 @@ import { EXIT_ERROR, EXIT_OK, UsageError, XError } from "../core/errors.ts";
 import { lstatOrNull, readFileOrNull, statOrNull } from "../core/fsutil.ts";
 import { parseOptions } from "../core/options.ts";
 import { accountDir, tildify } from "../core/paths.ts";
+import { loadState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { strayFolders } from "../link/leftover.ts";
+import { listPlugins, planPlugins } from "../link/plugins.ts";
 import { describeProblems, inspectAccount, repairAccount } from "../link/repair.ts";
 import { SHARED_DIRS, shareTable } from "../link/table.ts";
 import { storeUnknownEntries, unknownEntries } from "../link/unknown.ts";
@@ -143,6 +145,9 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
       repairAccount({ paths: ctx.paths, account: name, table, lockWaitMs: Infinity, replaceWrongLinks: true, log });
     }
     if (ctx.switches.normalizePaths && table.dirs.includes("plugins")) normalizePaths(ctx.paths, { lockWaitMs: Infinity, log });
+    if (table.dirs.includes("plugins")) {
+      for (const name of Object.keys(config.accounts)) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
+    }
   }
 
   // Tools
@@ -184,6 +189,7 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
   if (configProblem) report.add("info", "not checked: fix the config first (account dirs are left alone)");
   else if (!names.length) report.add("info", "no accounts yet; add one with: xclaude add <name>");
   const storeDev = statOrNull(ctx.paths.store)?.dev;
+  const listed = loadState(ctx.paths).listedPlugins;
   for (const name of names) {
     const login = logins.get(name);
     report.lines.push(`  ${name}${login ? `  ${describeLogin(login)}` : ""}`);
@@ -208,6 +214,10 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
         }
         const unknown = unknownEntries(insp.names, table);
         if (unknown.length) report.add("info", `per-account entries xclaude doesn't know: ${unknown.join(", ")}`, 2);
+        const plugins = table.dirs.includes("plugins") ? planPlugins(ctx.paths, name, listed[name] ?? [])?.add : undefined;
+        if (plugins?.length) {
+          report.add("info", `not in its /plugin yet, installed under another login: ${plugins.join(", ")} (the next launch, or --fix, lists ${plugins.length === 1 ? "it" : "them"} there, turned off)`, 2);
+        }
         const dev = statOrNull(dir)?.dev;
         if (storeDev !== undefined && dev !== undefined && dev !== storeDev) {
           report.add(

@@ -4,7 +4,7 @@
 
 ## Where things are written down
 
-- **Architecture (the reference):** [docs/architecture.md](docs/architecture.md), with the facts about Claude Code (F1–F24) it rests on. A change to behavior updates it in the same commit, along with the README and `xclaude help` where they're affected.
+- **Architecture (the reference):** [docs/architecture.md](docs/architecture.md), with the facts about Claude Code (F1–F25) it rests on. A change to behavior updates it in the same commit, along with the README and `xclaude help` where they're affected.
 - **Spike suite:** [spikes/](spikes/README.md) checks xclaude against the real Claude Code; run logs go to `spikes/results/` (not committed).
 
 ## Commands
@@ -32,7 +32,8 @@ src/core/           paths, config, state, fsutil (atomic write, no-clobber move,
                     lock (mkdir locks), sleep, options, shellwords, format, prompt, io, errors
 src/link/           table (share table), repair (per-entry states and actions), merge (link-first
                     directory merge), history (history merge), stub, unknown, normalize,
-                    leftover (what rm keeps of a removed account)
+                    plugins (other logins' plugins, listed as off), leftover (what rm keeps
+                    of a removed account)
 src/claude/         resolve (find claude), help (parse and cache --help), auth (auth status, runClaude)
 src/launch/         launch pipeline, args, env, exec (execve, spawn fallback, runChild), picker
 src/commands/       add, set, ls, rm, tmux, shell, guard, doctor, help,

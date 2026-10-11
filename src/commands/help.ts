@@ -28,6 +28,8 @@ Commands:
 Conversations, prompt history, memory and personal content (skills, agents,
 commands, plugins…) are shared by every account, so \`xclaude other -c\`
 continues the last conversation in this folder, whichever account it ran on.
+Plugins are turned on per account: one installed under another login shows
+in /plugin, turned off.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -118,7 +120,8 @@ Checks tools, config, every account's links and login, the shell setup,
 machine-managed settings and the environment. Exits non-zero if something is
 wrong.
 
-  --fix    repair links, merge left-behind directories, fix CLAUDE.md stubs
+  --fix    repair links, merge left-behind directories, fix CLAUDE.md stubs,
+           list plugins installed under other logins (turned off)
 `,
   help: `Usage: xclaude help [command]
 `,

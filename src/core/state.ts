@@ -8,13 +8,15 @@ export interface State {
   lastAccountByDir: Record<string, string>;
   lastUsedAccount: string | null;
   seenUnknownEntries: Record<string, string[]>;
+  /** Per account, the plugins xclaude added to its settings.json as off (link/plugins.ts). */
+  listedPlugins: Record<string, string[]>;
 }
 
 /** lastAccountByDir keeps the most recently used directories only. */
 const MAX_DIRS = 500;
 
 export function emptyState(): State {
-  return { installedVersion: null, lastAccountByDir: {}, lastUsedAccount: null, seenUnknownEntries: {} };
+  return { installedVersion: null, lastAccountByDir: {}, lastUsedAccount: null, seenUnknownEntries: {}, listedPlugins: {} };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -40,6 +42,11 @@ export function loadState(paths: Paths): State {
   if (isRecord(raw.seenUnknownEntries)) {
     for (const [name, entries] of Object.entries(raw.seenUnknownEntries)) {
       if (Array.isArray(entries)) state.seenUnknownEntries[name] = entries.filter((e) => typeof e === "string");
+    }
+  }
+  if (isRecord(raw.listedPlugins)) {
+    for (const [name, ids] of Object.entries(raw.listedPlugins)) {
+      if (Array.isArray(ids)) state.listedPlugins[name] = ids.filter((id) => typeof id === "string");
     }
   }
   return state;
@@ -74,4 +81,5 @@ export function forgetAccount(state: State, account: string): void {
   }
   if (state.lastUsedAccount === account) state.lastUsedAccount = null;
   delete state.seenUnknownEntries[account];
+  delete state.listedPlugins[account];
 }

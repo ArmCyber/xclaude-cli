@@ -8,6 +8,7 @@ import { loadState, recordUse, updateState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { unknownAccount } from "../grammar.ts";
 import { normalizePaths } from "../link/normalize.ts";
+import { listPlugins } from "../link/plugins.ts";
 import { LAUNCH_LOCK_WAIT_MS, problemLine, repairAccount } from "../link/repair.ts";
 import { shareTable } from "../link/table.ts";
 import { takeNewUnknown, unknownEntries, unknownNotice } from "../link/unknown.ts";
@@ -65,6 +66,8 @@ function repairForLaunch(ctx: Ctx, config: Config, account: string, log: (line: 
   if (ctx.switches.normalizePaths && table.dirs.includes("plugins")) {
     normalizePaths(ctx.paths, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
   }
+  // A busy store lock already cost this launch its wait; the next launch lists them.
+  if (table.dirs.includes("plugins") && !res.busy) listPlugins(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
   return unknownEntries(res.names, table);
 }
 

@@ -9,6 +9,7 @@ import { accountDir, mkdirPrivate, tildify } from "../core/paths.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
 import { runChild } from "../launch/exec.ts";
+import { listPlugins } from "../link/plugins.ts";
 import { problemLine, repairAccount, unmanageable } from "../link/repair.ts";
 import { shareTable } from "../link/table.ts";
 import { applyDefaultOptions, DEFAULT_OPTIONS } from "./defaults.ts";
@@ -33,15 +34,17 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
   if (refusal) throw new XError(`not adding ${name}: ${tildify(dir, ctx.paths.home)} ${refusal}. Replace it with a real folder, or remove it, then add ${name} again.`);
   if (fs.existsSync(dir)) log(`xclaude: ${tildify(dir, ctx.paths.home)} already exists; reusing it`);
   mkdirPrivate(dir);
+  const table = shareTable(config, ctx.switches);
   const res = repairAccount({
     paths: ctx.paths,
     account: name,
-    table: shareTable(config, ctx.switches),
+    table,
     lockWaitMs: Infinity,
     replaceWrongLinks: false,
     log,
   });
   for (const pr of res.problems) log(`xclaude: ${problemLine(name, pr)}`);
+  if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
   // Reload: another xclaude may have changed the config while this one waited for the repair.
   config = loadConfig(ctx.paths, { create: false }).config;
   config.accounts[name] = defaults;

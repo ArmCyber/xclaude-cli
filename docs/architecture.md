@@ -12,7 +12,7 @@ Claude Code keeps everything, including the login, in one config dir, `~/.claude
 ~/.claude/                          shared store; also plain claude's config dir (the main identity)
 ~/.xclaude/                         $XCLAUDE_HOME
 ├── config.json                     accounts, defaults, share overrides, guard, tmux options (0600)
-├── state.json                      last account per dir, seen unknown entries, installed version (0600)
+├── state.json                      last account per dir, seen unknown entries, plugins listed as off, installed version (0600)
 ├── cache/claude-help.json          parsed `claude --help`, keyed by binary path + mtime + size
 ├── cache/update-check.json         the latest xclaude on npm and when it was checked (§12)
 ├── shell/init.bash, init.zsh       generated shell integration
@@ -46,7 +46,7 @@ Claude Code keeps everything, including the login, in one config dir, `~/.claude
 - `add`, `set`, `rm`, `set main --enable|--disable` and `guard on|off` edit it; the rest is edited by hand. `main` is reserved and can't be an account name.
 - `share.add` lists extra directory names to share, meant for entries xclaude doesn't know yet (the unknown-entry notice suggests it). Per-account entries are refused whatever their letter case (macOS volumes are case-insensitive, so `Jobs` is `jobs`), and so are names that look like files. `share.remove` stops sharing a built-in entry: the account's link becomes an empty real directory (an empty `0600` file for `history.jsonl`), and the content stays in the store.
 - `claudePath` pins the `claude` binary (`XCLAUDE_CLAUDE_PATH` does the same for one run). `tmux.statusRight: false` leaves tmux's status bar alone.
-- `state.json` (managed, and losing an update is harmless) holds the last account per directory, the last one used, the unknown entries already reported, and the installed version.
+- `state.json` (managed, and losing an update is harmless) holds the last account per directory, the last one used, the unknown entries already reported, the plugins xclaude listed as off in each account's settings (§8), and the installed version.
 - Other environment variables: `XCLAUDE_HOME` moves `~/.xclaude`; `XCLAUDE_SWITCHES="name=1,name=0"` overrides the switches (§3) for one run; `XCLAUDE_MANAGED_SETTINGS_DIR` points `doctor` at another managed-settings directory (tests use it); `XCLAUDE_NO_UPDATE_CHECK=1` turns the update check off and `XCLAUDE_UPDATE_URL` replaces its registry URL (tests use both, §12).
 
 - **Removed accounts** (`link/leftover.ts`): `rm` deletes an account's login, settings and caches but keeps its links, because Claude Code records paths through the config dir it ran under, like saved tool outputs. It also keeps the account's own content under a shared name (its own skills while `skills` isn't shared), so nothing it made is lost. `rm <name>` on the leftover, or `rm --leftovers`, deletes it after a confirmation, re-checked afterwards, and only while it holds nothing but links and no tmux session of that account runs. Any other folder in `accounts/` (one holding a login or an interrupted merge, a name that couldn't be an account's, a symlink) is never deleted; `doctor` points it out, and `add` takes a valid one back.
@@ -127,16 +127,17 @@ Shared instructions live in ~/.claude/CLAUDE.md, so edit that file.
 
 From directories under `$HOME`, `~/.claude/CLAUDE.md` also loads through Claude Code's ancestor walk (F12). Everywhere else only the import loads it. The stub is removed only while it's still exactly the stub, and a differing file is never touched (`doctor` points it out).
 
-## 8. Unknown entries and path normalization
+## 8. Unknown entries, plugins and path normalization
 
 - **Unknown entries** (`link/unknown.ts`): names in an account dir that are in none of the share table, the per-account list or Appendix A stay per account. The first sighting prints one line and is recorded in `state.json`. Locks, `.xclaude-*`, `.DS_Store` and Claude Code's `*.tmp.*` files are ignored. `scripts/claude-state-entries.ts` diffs Appendix A against a new binary.
+- **Plugins from other logins** (`link/plugins.ts`): the plugin registry (`plugins/installed_plugins.json`) is shared, but which plugins are on is each account's `settings.json`, and `/plugin` lists as installed only the plugins those settings name (F25). A plugin installed under another login is therefore missing from Installed, so there's nowhere to turn it on (Discover still offers it, but installing there downloads it again). So on every launch, in `add` and in `doctor --fix`, each plugin with a user-scope record that the account's `enabledPlugins` doesn't name (ids compared without regard to case, as Claude Code does) is added as `false`, and one line says which. `state.json` remembers what was added; once such a plugin has no user-scope record left and its entry is still `false`, the entry is taken out again, and one the user turned on is forgotten, not touched. It plans without a lock, plans again under the store lock, writes the file atomically, and skips a `settings.json` Claude Code wrote in between. It leaves alone an account whose `plugins` isn't the store's, a `settings.json` that's a link, unparsable or not an object, and everything while the registry can't be read. It only covers accounts: the `~/.claude` login's settings also act as project settings for sessions started in `$HOME` (§13), where an added `false` would turn the plugin off for the account too. `doctor` lists what the next launch would add.
 - **Path normalization** (`link/normalize.ts`, off: another account loads a plugin fine after the installing account's dir is gone): rewrites `<xclaude home>/accounts/<name>/…` to `$HOME/.claude/…` in JSON string values of `plugins/installed_plugins.json` and `plugins/known_marketplaces.json`. It plans first, re-checks the file under the store lock, and skips a file Claude Code wrote in between.
 
 ## 9. Launch (`launch/`)
 
 `xclaude <account> [args…]`:
 1. Resolve the account (the grammar or the picker; `main` only when enabled).
-2. Link engine (regular accounts only), problems printed, unknown entries noted.
+2. Link engine (regular accounts only), problems printed, unknown entries noted, other logins' plugins listed as off (§8).
 3. Find `claude`: `XCLAUDE_CLAUDE_PATH`, `claudePath`, the first `claude` on PATH whose real path isn't xclaude itself, then the fixed install locations. It's resolved every time, since auto-updates move the versioned file.
 4. Arguments (`launch/args.ts`): if the first user argument is a Claude Code subcommand (the parsed `--help` plus a fallback list that includes the hidden `daemon`), the user arguments pass through unchanged. Otherwise `[account args] [--model M] [--effort E] [user args]`. Defaults are skipped when the user typed that flag, and user arguments come last, so they win. Account args that take values become `--flag=value`, one per value, so a variadic flag never swallows a prompt.
 5. Environment: inherited, `CLAUDE_CONFIG_DIR` set (or removed for `main`), `CLAUDE_SECURESTORAGE_CONFIG_DIR` removed, `XCLAUDE_ACCOUNT` set.
@@ -173,7 +174,7 @@ Every command that runs after the config loads (so not `help`, `-v`, `doctor` or
 
 ## 13. Known limitations
 
-- `.claude.json` and `settings.json` are per account: MCP servers, folder trust, plugins, hooks and the statusline are set per account.
+- `.claude.json` and `settings.json` are per account: MCP servers, folder trust, plugins, hooks and the statusline are set per account. A plugin installed under another login shows in an account's `/plugin` turned off (§8), but uninstalling it removes it for every login, since the registry is shared. The `~/.claude` login gets no such listing: a plugin an account installed is missing from its Installed tab until `claude plugin enable <plugin>` (Discover offers it too, but installing there downloads it again).
 - Opening the same conversation in two terminals at once can corrupt it, and Claude Code shows no warning when the other terminal runs another account. Two accounts using `--chrome` at once may fight over the native-messaging manifest (untested).
 - A machine with `forceLoginOrgUUID` refuses other orgs' logins (`doctor` reports it). An org's server-managed `cleanupPeriodDays` sweeps everyone's shared transcripts when that account runs (`doctor` warns below 30 days).
 - `history.jsonl` isn't pruned while it's only reached through links (Claude Code skips symlinked history when pruning).
@@ -214,6 +215,7 @@ Every command that runs after the config loads (so not `help`, `-v`, `doctor` or
 | F22 | `CLAUDE_CODE_CHILD_SESSION=1` (and `CLAUDECODE=1`) are set in the processes Claude Code spawns. | Doc / Observed |
 | F23 | Shared data records paths under the writing account's dir (plugin registry, tool results). Spike 13 found that plugins resolve under the reading account's own dir, while saved tool outputs are opened through the recorded path. | Observed / tested |
 | F24 | With `CLAUDE_CONFIG_DIR` set, Claude Code also scans `~/.claude/ide`. | Observed |
+| F25 | `/plugin`'s Installed tab lists only the plugins named in the config dir's `enabledPlugins` (on or off), while `claude plugin list` lists every record in `installed_plugins.json`. `claude plugin enable <id>` adds the id to the user settings without touching the registry. | Observed in 2.1.296 / tested by hand |
 
 **Sources:** Claude Code's docs at code.claude.com/docs/en/ (authentication, claude-directory, agent-view, sessions, memory, model-config, settings-reference, env-vars, data-usage, chrome, hooks, statusline, cli-reference, setup, troubleshoot-install, managed-settings, vs-code), its CHANGELOG, Node's `process` docs, and anthropics/claude-code issues #20131, #24963, #30230, #47056, #55456, #31649, #40857, #88307, #15786, #3575, #51488, #96690, #96511, #97062, #96321, #14836, #95373, #88405, #90523, #22166 and #29051.
 

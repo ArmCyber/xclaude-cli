@@ -66,7 +66,7 @@ xclaude's options (`--dir`, `--detach`, `--empty`) come right after the label, a
 ## What's shared
 
 - **Shared by all accounts:** conversations and their checkpoints (`projects`, `file-history`), prompt history, task lists, plans, running-session info, personal skills, agents, commands, rules, output styles, hooks and plugins, and `~/.claude/CLAUDE.md`.
-- **Per account:** the login, `.claude.json` (MCP servers, folder trust), `settings.json` (so plugins, hooks and the statusline are enabled per account), keybindings, background sessions and caches.
+- **Per account:** the login, `.claude.json` (MCP servers, folder trust), `settings.json` (so plugins, hooks and the statusline are enabled per account), keybindings, background sessions and caches. A plugin installed under another login shows in an account's `/plugin`, turned off, from its next launch; turn it on there. Uninstalling a plugin removes it for every login. For the `~/.claude` login, turn on a plugin an account installed with `claude plugin enable <plugin>`.
 
 Sharing works by linking each account's directories into `~/.claude`, which plain `claude` keeps using as before. Don't open the same conversation in two terminals at once. Scripts can read `XCLAUDE_ACCOUNT` to show the account, for example in a statusline.
 

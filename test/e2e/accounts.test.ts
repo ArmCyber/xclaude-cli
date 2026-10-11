@@ -32,6 +32,15 @@ describe("add", () => {
     assert.match(res.stderr, /acme is logged in as a@acme\.com \(Org One\)\. Launch it with: xclaude acme/);
   });
 
+  it("lists the plugins already installed, turned off, before claude first starts", () => {
+    fs.mkdirSync(path.join(sb.store, "plugins"), { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "plugins", "installed_plugins.json"), JSON.stringify({ version: 2, plugins: { "foo@m": [{ scope: "user", installPath: "/x" }] } }));
+    const res = sb.run(["add", "acme"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")), { enabledPlugins: { "foo@m": false } });
+    assert.ok(res.stderr.indexOf("foo@m is installed under another login") < res.stderr.indexOf("Starting Claude Code in it"));
+  });
+
   it("explains how to log in later", () => {
     const res = sb.run(["add", "acme"]);
     assert.equal(res.status, 0);

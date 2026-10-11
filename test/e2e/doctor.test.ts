@@ -69,6 +69,20 @@ describe("doctor", () => {
     assert.equal(fs.readlinkSync(path.join(accDir("acme"), "skills")), path.join(sb.store, "skills"));
   });
 
+  it("reports plugins installed under another login, and --fix lists them", () => {
+    fs.writeFileSync(
+      path.join(sb.store, "plugins", "installed_plugins.json"),
+      JSON.stringify({ version: 2, plugins: { "foo@m": [{ scope: "user", installPath: "/x" }], "bar@m": [{ scope: "user", installPath: "/y" }] } }),
+    );
+    let res = doctor();
+    assert.equal(res.status, 0, res.stdout);
+    assert.match(res.stdout, /· not in its \/plugin yet, installed under another login: bar@m, foo@m \(the next launch, or --fix, lists them there, turned off\)/);
+    res = doctor(["--fix"]);
+    assert.match(res.stderr, /2 plugins installed under other logins are in acme's \/plugin now, turned off: bar@m, foo@m/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")).enabledPlugins, { "bar@m": false, "foo@m": false });
+    assert.doesNotMatch(doctor().stdout, /not in its \/plugin yet/);
+  });
+
   it("reports a missing account dir, and --fix recreates it", () => {
     fs.rmSync(accDir("acme"), { recursive: true });
     assert.match(doctor().stdout, /✗ ~\/\.xclaude\/accounts\/acme is missing; the next launch \(or --fix\) recreates it/);

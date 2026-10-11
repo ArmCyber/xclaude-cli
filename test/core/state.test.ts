@@ -22,8 +22,8 @@ describe("state", () => {
     fs.mkdirSync(paths.xhome);
     fs.writeFileSync(paths.state, "{not json");
     assert.deepEqual(loadState(paths), emptyState());
-    fs.writeFileSync(paths.state, JSON.stringify({ lastAccountByDir: "nope", lastUsedAccount: 3, seenUnknownEntries: { a: [1, "x"] } }));
-    assert.deepEqual(loadState(paths), { ...emptyState(), seenUnknownEntries: { a: ["x"] } });
+    fs.writeFileSync(paths.state, JSON.stringify({ lastAccountByDir: "nope", lastUsedAccount: 3, seenUnknownEntries: { a: [1, "x"] }, listedPlugins: { a: [2, "p@m"], b: "q@m" } }));
+    assert.deepEqual(loadState(paths), { ...emptyState(), seenUnknownEntries: { a: ["x"] }, listedPlugins: { a: ["p@m"] } });
   });
 
   it("round-trips with mode 0600", () => {
@@ -31,6 +31,7 @@ describe("state", () => {
     s.installedVersion = "1.0.0";
     recordUse(s, "/home/u/code/api", "acme");
     s.seenUnknownEntries.acme = ["foo"];
+    s.listedPlugins.acme = ["foo@market"];
     saveState(paths, s);
     assert.deepEqual(loadState(paths), s);
     assert.equal(fs.statSync(paths.state).mode & 0o777, 0o600);
@@ -54,10 +55,12 @@ describe("state", () => {
     recordUse(s, "/y", "other");
     recordUse(s, "/z", "acme");
     s.seenUnknownEntries.acme = ["foo"];
+    s.listedPlugins.acme = ["foo@market"];
     forgetAccount(s, "acme");
     assert.deepEqual(s.lastAccountByDir, { "/y": "other" });
     assert.equal(s.lastUsedAccount, null);
     assert.deepEqual(s.seenUnknownEntries, {});
+    assert.deepEqual(s.listedPlugins, {});
   });
 
   it("updateState reads, changes and writes", () => {

@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import { DirLock, STORE_LOCK } from "../../src/core/lock.ts";
 import { loadState } from "../../src/core/state.ts";
+import { LAUNCH_LOCK_WAIT_MS } from "../../src/link/repair.ts";
 import { main } from "../../src/main.ts";
 import { testCtx, type TestCtx } from "../helpers/ctx.ts";
 
@@ -90,6 +92,40 @@ describe("launch", () => {
     const notices = ctx.io.stderr.split("\n").filter((l) => l.includes('new Claude Code entry "brand-new"'));
     assert.equal(notices.length, 1);
     assert.deepEqual(loadState(ctx.paths).seenUnknownEntries, { acme: ["brand-new"] });
+  });
+
+  it("lists plugins installed under another login in the account's settings, turned off", async () => {
+    fs.mkdirSync(path.join(ctx.paths.store, "plugins"), { recursive: true });
+    fs.writeFileSync(
+      path.join(ctx.paths.store, "plugins", "installed_plugins.json"),
+      JSON.stringify({ version: 2, plugins: { "superpowers@market": [{ scope: "user", installPath: "/x" }] } }),
+    );
+    await main(["acme"], ctx);
+    const settings = JSON.parse(fs.readFileSync(path.join(acmeDir(), "settings.json"), "utf8"));
+    assert.deepEqual(settings.enabledPlugins, { "superpowers@market": false });
+    assert.match(ctx.io.stderr, /xclaude: superpowers@market is installed under another login; acme's \/plugin lists it now, turned off/);
+    assert.equal(ctx.execs.length, 1);
+  });
+
+  it("waits for a busy store lock once, not again for the plugins", async () => {
+    fs.mkdirSync(path.join(ctx.paths.store, "plugins"), { recursive: true });
+    fs.writeFileSync(
+      path.join(ctx.paths.store, "plugins", "installed_plugins.json"),
+      JSON.stringify({ version: 2, plugins: { "superpowers@market": [{ scope: "user", installPath: "/x" }] } }),
+    );
+    await main(["acme"], ctx); // links and plugins are in place
+    fs.rmSync(path.join(acmeDir(), "settings.json"));
+    const lock = DirLock.acquire(path.join(ctx.paths.locks, "store"), STORE_LOCK, { waitMs: 0 })!;
+    try {
+      fs.unlinkSync(path.join(acmeDir(), "plans")); // gives the repair something to wait for
+      const started = Date.now();
+      await main(["acme"], ctx);
+      assert.ok(Date.now() - started < LAUNCH_LOCK_WAIT_MS * 1.5, `took ${Date.now() - started} ms`);
+    } finally {
+      lock.release();
+    }
+    assert.match(ctx.io.stderr, /links not checked this time/);
+    assert.ok(!fs.existsSync(path.join(acmeDir(), "settings.json")));
   });
 
   it("requires an account without a terminal", async () => {
