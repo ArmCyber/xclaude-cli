@@ -3,7 +3,7 @@ import { addCommand } from "./commands/add.ts";
 import { doctorCommand } from "./commands/doctor.ts";
 import { guardCommand } from "./commands/guard.ts";
 import { helpText, wantsHelp } from "./commands/help.ts";
-import { completeCommand, namesCommand } from "./commands/hidden.ts";
+import { completeCommand, namesCommand, updateCheckCommand } from "./commands/hidden.ts";
 import { lsCommand } from "./commands/ls.ts";
 import { rmCommand } from "./commands/rm.ts";
 import { setCommand } from "./commands/set.ts";
@@ -17,6 +17,7 @@ import type { Ctx } from "./ctx.ts";
 import { classify } from "./grammar.ts";
 import { chooseAccount, launch } from "./launch/launch.ts";
 import { refreshInitFiles } from "./shell/init.ts";
+import { updateCheckOnOpen } from "./update.ts";
 import { VERSION } from "./version.ts";
 
 export async function main(argv: string[], ctx: Ctx): Promise<number> {
@@ -41,6 +42,7 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
   }
   if (first === "__complete") return completeCommand(ctx, argv.slice(1));
   if (first === "__names") return namesCommand(ctx);
+  if (first === "__update-check") return updateCheckCommand(ctx);
   // doctor reports a broken config instead of failing on it, so it loads the config itself.
   if (first === "doctor") return doctorCommand(ctx, argv.slice(1));
 
@@ -63,6 +65,9 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
   } catch {
     // best-effort: never block a command on it
   }
+
+  // A note when npm has a newer xclaude, and a background check once a day.
+  updateCheckOnOpen(ctx, VERSION);
 
   const action = classify(argv, config);
   switch (action.kind) {

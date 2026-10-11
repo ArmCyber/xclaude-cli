@@ -14,6 +14,7 @@ Claude Code keeps everything, including the login, in one config dir, `~/.claude
 ├── config.json                     accounts, defaults, share overrides, guard, tmux options (0600)
 ├── state.json                      last account per dir, seen unknown entries, installed version (0600)
 ├── cache/claude-help.json          parsed `claude --help`, keyed by binary path + mtime + size
+├── cache/update-check.json         the latest xclaude on npm and when it was checked (§12)
 ├── shell/init.bash, init.zsh       generated shell integration
 ├── locks/store                     the store-wide repair lock (a directory)
 └── accounts/<name>/                CLAUDE_CONFIG_DIR of <name> (0700); never moves
@@ -46,7 +47,7 @@ Claude Code keeps everything, including the login, in one config dir, `~/.claude
 - `share.add` lists extra directory names to share, meant for entries xclaude doesn't know yet (the unknown-entry notice suggests it). Per-account entries are refused whatever their letter case (macOS volumes are case-insensitive, so `Jobs` is `jobs`), and so are names that look like files. `share.remove` stops sharing a built-in entry: the account's link becomes an empty real directory (an empty `0600` file for `history.jsonl`), and the content stays in the store.
 - `claudePath` pins the `claude` binary (`XCLAUDE_CLAUDE_PATH` does the same for one run). `tmux.statusRight: false` leaves tmux's status bar alone.
 - `state.json` (managed, and losing an update is harmless) holds the last account per directory, the last one used, the unknown entries already reported, and the installed version.
-- Other environment variables: `XCLAUDE_HOME` moves `~/.xclaude`; `XCLAUDE_SWITCHES="name=1,name=0"` overrides the switches (§3) for one run; `XCLAUDE_MANAGED_SETTINGS_DIR` points `doctor` at another managed-settings directory (tests use it).
+- Other environment variables: `XCLAUDE_HOME` moves `~/.xclaude`; `XCLAUDE_SWITCHES="name=1,name=0"` overrides the switches (§3) for one run; `XCLAUDE_MANAGED_SETTINGS_DIR` points `doctor` at another managed-settings directory (tests use it); `XCLAUDE_NO_UPDATE_CHECK=1` turns the update check off and `XCLAUDE_UPDATE_URL` replaces its registry URL (tests use both, §12).
 
 - **Removed accounts** (`link/leftover.ts`): `rm` deletes an account's login, settings and caches but keeps its links, because Claude Code records paths through the config dir it ran under, like saved tool outputs. It also keeps the account's own content under a shared name (its own skills while `skills` isn't shared), so nothing it made is lost. `rm <name>` on the leftover, or `rm --leftovers`, deletes it after a confirmation, re-checked afterwards, and only while it holds nothing but links and no tmux session of that account runs. Any other folder in `accounts/` (one holding a login or an interrupted merge, a name that couldn't be an account's, a symlink) is never deleted; `doctor` points it out, and `add` takes a valid one back.
 - **Account folders are real folders:** one that's a symlink, or that is or holds the store, is refused by every repair, `add` and `rm`, since working through it would reach into `~/.claude` or wherever it points.
@@ -162,7 +163,15 @@ From directories under `$HOME`, `~/.claude/CLAUDE.md` also loads through Claude 
 - **Completion** is a thin shim that calls `xclaude __complete <shell> <cword> <words…>`, which answers with a directive (`default`, `files`, `dirs`, `nospace`) and candidates. That's about 25 ms, and `--help` parsing is cached. bash's `COMP_WORDBREAKS` split of `--flag=value` is joined back in Node, which answers with only the part readline replaces. The bash shim targets bash 3.2 (no `compopt`, `mapfile` or associative arrays) and is tested in the `bash:3.2` image. zsh registers from a one-shot `precmd` hook, so a later `compinit` can't wipe the `compdef`, and it's tested interactively in tmux.
 - **Guard:** a `claude()` function that passes through when `XCLAUDE_ACCOUNT` or `CLAUDE_CODE_CHILD_SESSION` is set, or when xclaude isn't installed.
 
-## 12. Known limitations
+## 12. Update check (`update.ts`)
+
+Every command that runs after the config loads (so not `help`, `-v`, `doctor` or the hidden ones) does this when stderr is a terminal:
+
+- When `cache/update-check.json` names a version newer than the running one, it prints `xclaude: an update is available (0.1.2 → 0.1.3); please run npm install -g xclaude-cli to update`. It's only a note: nothing waits or asks.
+- When the last check is a day old (or missing, or in the future), it starts `xclaude __update-check` in the background and goes on (about 2 ms). The process starts through `sh -c '… &'` in a new session, so it's orphaned at once: claude never inherits it through execve, and closing the terminal doesn't stop it. It fetches `https://registry.npmjs.org/xclaude-cli/latest` (10 s timeout) and records `{ checkedAt, latest }`. A new release therefore shows from the open after the check that found it.
+- A failed check (offline, the registry down, a bad answer) is silent and records nothing, so the next open tries again.
+
+## 13. Known limitations
 
 - `.claude.json` and `settings.json` are per account: MCP servers, folder trust, plugins, hooks and the statusline are set per account.
 - Opening the same conversation in two terminals at once can corrupt it, and Claude Code shows no warning when the other terminal runs another account. Two accounts using `--chrome` at once may fight over the native-messaging manifest (untested).
@@ -175,7 +184,7 @@ From directories under `$HOME`, `~/.claude/CLAUDE.md` also loads through Claude 
   - A history writer that resolved the old path, waited out the account's lock and appended without the store's lock could, in a roughly one-second window, collide with another account's history merge.
   - Two processes taking over the same stale lock at the same moment can both proceed (proper-lockfile has the same race). A holder that notices it lost the lock stops without undoing anything, and merges never read through links or overwrite, so directory merges lose nothing; a history rewrite racing another process's rewrite could drop the lines appended in between.
 
-## 13. Facts the design relies on
+## 14. Facts the design relies on
 
 "Observed" means seen in the Claude Code binary (v2.1.282), "Doc" Claude Code's documentation, "Issue" an issue in anthropics/claude-code, and "tested" checked by xclaude's tests or spike runs. The ones xclaude depends on were re-checked with 2.1.283 on Linux and macOS.
 
@@ -208,7 +217,7 @@ From directories under `$HOME`, `~/.claude/CLAUDE.md` also loads through Claude 
 
 **Sources:** Claude Code's docs at code.claude.com/docs/en/ (authentication, claude-directory, agent-view, sessions, memory, model-config, settings-reference, env-vars, data-usage, chrome, hooks, statusline, cli-reference, setup, troubleshoot-install, managed-settings, vs-code), its CHANGELOG, Node's `process` docs, and anthropics/claude-code issues #20131, #24963, #30230, #47056, #55456, #31649, #40857, #88307, #15786, #3575, #51488, #96690, #96511, #97062, #96321, #14836, #95373, #88405, #90523, #22166 and #29051.
 
-## 14. Claude Code's own state entries (Appendix A)
+## 15. Claude Code's own state entries (Appendix A)
 
 Kept per account unless the share table lists them (`APPENDIX_A` in `link/table.ts`; `scripts/claude-state-entries.ts` diffs it against a new binary):
 

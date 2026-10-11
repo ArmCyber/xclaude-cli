@@ -146,6 +146,7 @@ export class Suite {
       SHELL: "/bin/bash",
       TMUX_TMPDIR: this.tmuxTmp,
       DISABLE_AUTOUPDATER: "1",
+      XCLAUDE_NO_UPDATE_CHECK: "1",
       XCLAUDE_CLAUDE_PATH: this.claude,
       ...(process.env.USER ? { USER: process.env.USER } : {}),
       ...(process.env.LOGNAME ? { LOGNAME: process.env.LOGNAME } : {}),

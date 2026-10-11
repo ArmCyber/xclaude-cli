@@ -27,6 +27,7 @@ src/cli.ts          entry: runtime-check.ts (runtime.ts: Node and platform) firs
 src/main.ts         dispatch; grammar.ts is the first-word grammar; version.ts is set by the build
 src/ctx.ts          Ctx: env, paths, io, tty, switches, exec — everything a test can substitute
 src/switches.ts     the switches the spikes settled
+src/update.ts       the daily update check: npm registry in the background, a note on open
 src/core/           paths, config, state, fsutil (atomic write, no-clobber move, tree removal),
                     lock (mkdir locks), sleep, options, shellwords, format, prompt, io, errors
 src/link/           table (share table), repair (per-entry states and actions), merge (link-first
@@ -34,7 +35,8 @@ src/link/           table (share table), repair (per-entry states and actions), 
                     leftover (what rm keeps of a removed account)
 src/claude/         resolve (find claude), help (parse and cache --help), auth (auth status, runClaude)
 src/launch/         launch pipeline, args, env, exec (execve, spawn fallback, runChild), picker
-src/commands/       add, set, ls, rm, tmux, shell, guard, doctor, help, hidden (__complete, __names),
+src/commands/       add, set, ls, rm, tmux, shell, guard, doctor, help,
+                    hidden (__complete, __names, __update-check),
                     defaults (--model/--effort/--args parsing shared by add and set)
 src/tmux/           client (env stripping, `;` escaping), sessions, claude-state (CLAUDE column)
 src/shell/          rc (rc block), init (bash 3.2 and zsh shims, guard), complete (__complete)

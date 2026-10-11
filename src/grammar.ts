@@ -7,7 +7,7 @@ import { COMMANDS, type Config, MAIN, identities } from "./core/config.ts";
 import { UsageError, XError } from "./core/errors.ts";
 
 export type Command = (typeof COMMANDS)[number];
-export const HIDDEN = ["__complete", "__names"] as const;
+export const HIDDEN = ["__complete", "__names", "__update-check"] as const;
 export type Hidden = (typeof HIDDEN)[number];
 
 export type Action =

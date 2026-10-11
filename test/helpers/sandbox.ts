@@ -128,6 +128,8 @@ export function makeSandbox(): Sandbox {
     LANG: process.env.LANG || defaultLang(),
     XCLAUDE_CLAUDE_PATH: path.join(bin, "claude"),
     XCLAUDE_MANAGED_SETTINGS_DIR: path.join(root, "managed"),
+    // Runs in tmux panes have a terminal, which would start the npm check.
+    XCLAUDE_NO_UPDATE_CHECK: "1",
     FAKE_CLAUDE_LOG: fakeLog,
     // A zsh installed outside the usual prefix (no sudo) needs its function path.
     ...(process.env.FPATH ? { FPATH: process.env.FPATH } : {}),

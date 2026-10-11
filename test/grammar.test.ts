@@ -37,6 +37,7 @@ const table: Array<[string[], Action]> = [
   [["help", "tmux"], { kind: "command", name: "help", args: ["tmux"] }],
   [["__complete", "bash", "1", "xclaude", ""], { kind: "hidden", name: "__complete", args: ["bash", "1", "xclaude", ""] }],
   [["__names"], { kind: "hidden", name: "__names", args: [] }],
+  [["__update-check"], { kind: "hidden", name: "__update-check", args: [] }],
 ];
 
 describe("grammar", () => {

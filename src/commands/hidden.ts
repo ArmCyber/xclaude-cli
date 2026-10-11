@@ -1,9 +1,10 @@
-// Hidden commands used by the shell integration. They never create files and
-// never fail loudly: a broken config just means no output.
+// Hidden commands: two for the shell integration, and the update check's
+// background half. They never fail loudly: a broken config just means no output.
 import { type Config, identities, loadConfig } from "../core/config.ts";
 import { EXIT_OK } from "../core/errors.ts";
 import type { Ctx } from "../ctx.ts";
 import { complete, formatCompletion, type ShellName } from "../shell/complete.ts";
+import { REGISTRY_URL, runUpdateCheck } from "../update.ts";
 
 function quietConfig(ctx: Ctx): Config | null {
   try {
@@ -34,5 +35,11 @@ export function namesCommand(ctx: Ctx): number {
   const config = quietConfig(ctx);
   const names = config ? identities(config) : [];
   if (names.length) ctx.io.out(`${names.join(" ")}\n`);
+  return EXIT_OK;
+}
+
+/** xclaude __update-check: asks npm for the latest version (started in the background by update.ts). */
+export async function updateCheckCommand(ctx: Ctx): Promise<number> {
+  await runUpdateCheck(ctx.paths, ctx.env.XCLAUDE_UPDATE_URL || REGISTRY_URL);
   return EXIT_OK;
 }

@@ -72,6 +72,15 @@ try {
   } else check("tmux new --empty (tmux not installed: skipped)", true);
   const d = x(["doctor"]);
   check("doctor", d.status === 0, d.stdout.trim().split("\n").at(-1) ?? "");
+  // The real registry, once: the tests only talk to a local server.
+  x(["__update-check"]);
+  let latest = "";
+  try {
+    latest = JSON.parse(fs.readFileSync(path.join(home, ".xclaude", "cache", "update-check.json"), "utf8")).latest;
+  } catch {
+    // reported below
+  }
+  check("update check reaches npm", /^\d+\.\d+\.\d+/.test(latest), latest || "nothing recorded (offline?)");
   spawnSync(tmux ?? "tmux", ["kill-server"], { env, stdio: "ignore" });
 } catch (e) {
   check("smoke test ran", false, (e as Error).message);

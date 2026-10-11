@@ -21,7 +21,7 @@ xclaude add personal               # then log in with /login
 xclaude shell install              # completion in ~/.zshrc and/or ~/.bashrc
 ```
 
-Update with `npm i -g xclaude-cli@latest`. Update Claude Code with `claude update` (or `xclaude <any> update`).
+Update with `npm i -g xclaude-cli@latest`; xclaude checks npm once a day and prints a one-line note when there's a newer version (`XCLAUDE_NO_UPDATE_CHECK=1` turns that off). Update Claude Code with `claude update` (or `xclaude <any> update`).
 
 ## Commands
 
