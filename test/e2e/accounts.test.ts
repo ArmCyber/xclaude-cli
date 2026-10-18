@@ -374,6 +374,20 @@ describe("rm", () => {
     assert.equal(sb.run(["rm", "acme", "-y"]).status, 1, "not deleted while it holds that");
   });
 
+  it("keeps a CLAUDE.md edited through /memory and files of its own", () => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "CLAUDE.md"), "shared\n");
+    sb.run(["acme", "-p", "x"], { cwd: sb.root }); // the launch writes the stub
+    fs.appendFileSync(path.join(accDir("acme"), "CLAUDE.md"), "my note\n");
+    fs.writeFileSync(path.join(accDir("acme"), "statusline.sh"), "echo hi");
+    const res = sb.run(["rm", "acme", "-y"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stderr, /and acme's own CLAUDE\.md, statusline\.sh \(not shared\)/);
+    assert.match(fs.readFileSync(path.join(accDir("acme"), "CLAUDE.md"), "utf8"), /my note/);
+    assert.equal(fs.readFileSync(path.join(accDir("acme"), "statusline.sh"), "utf8"), "echo hi");
+    assert.equal(sb.run(["rm", "acme", "-y"]).status, 1, "not deleted while it holds them");
+  });
+
   it("keeps a leftover while tmux sessions of its account still run", (t) => {
     if (!needTmux(sb, t)) return;
     sb.run(["tmux", "new", "busy", "--detach", "acme"]);

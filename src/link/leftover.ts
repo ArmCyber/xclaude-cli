@@ -5,9 +5,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { accountNameProblem, type Config } from "../core/config.ts";
-import { lstatOrNull, removeTree } from "../core/fsutil.ts";
+import { lstatOrNull, readFileOrNull, removeTree } from "../core/fsutil.ts";
 import { accountDir, type Paths } from "../core/paths.ts";
-import { HISTORY, SHARED_DIRS, type ShareTable } from "./table.ts";
+import { STUB_TEXT } from "./stub.ts";
+import { HISTORY, isIgnored, isKnown, SHARED_DIRS, type ShareTable, STUB } from "./table.ts";
 
 /**
  * A folder in accounts/ that isn't an account in the config:
@@ -74,22 +75,29 @@ function hasContent(p: string): boolean {
   return st.size > 0;
 }
 
+/** Something the user made in the account: a CLAUDE.md that isn't just the stub (/memory writes there), or an entry xclaude doesn't know. */
+function madeByUser(p: string, name: string, table: ShareTable): boolean {
+  if (name === STUB) return !(lstatOrNull(p)?.isFile() && readFileOrNull(p) === STUB_TEXT);
+  return !isKnown(name, table) && !isIgnored(name);
+}
+
 /**
  * Turns a removed account's folder into its leftover. The links into ~/.claude stay,
- * and so does the account's own content under a shared name (its own skills while
- * skills aren't shared, say), so nothing it made is lost. Everything else (login,
- * settings, caches, the CLAUDE.md stub) goes, never following a link. A folder left
- * empty is removed. Returns the entries kept as real content.
+ * and so does what the account made itself: content under a shared name (its own
+ * skills while skills aren't shared, say), a CLAUDE.md with more than the stub, and
+ * entries xclaude doesn't know. Everything else (login, settings, caches, the
+ * CLAUDE.md stub) goes, never following a link. A folder left empty is removed.
+ * Returns the entries kept as real content.
  */
 export function keepOnlyLinks(dir: string, table: ShareTable): { kept: boolean; content: string[] } {
   if (lstatOrNull(dir)?.isSymbolicLink()) throw new Error(`${dir} is a symlink`);
   const shared = linkNames(table);
   const content: string[] = [];
   let links = 0;
-  for (const name of fs.readdirSync(dir)) {
+  for (const name of fs.readdirSync(dir).sort()) {
     const p = path.join(dir, name);
     if (shared.has(name) && lstatOrNull(p)?.isSymbolicLink()) links++;
-    else if (shared.has(name) && hasContent(p)) content.push(name);
+    else if ((shared.has(name) || madeByUser(p, name, table)) && hasContent(p)) content.push(name);
     else removeTree(p);
   }
   if (links || content.length) return { kept: true, content };

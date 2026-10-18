@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import { defaultConfig } from "../../src/core/config.ts";
 import { resolvePaths } from "../../src/core/paths.ts";
 import { keepOnlyLinks, leftoverNames, strayFolders } from "../../src/link/leftover.ts";
+import { STUB_TEXT } from "../../src/link/stub.ts";
 import { shareTable } from "../../src/link/table.ts";
 import { SWITCHES } from "../../src/switches.ts";
 import { removeTemp, tempDir } from "../helpers/tmp.ts";
@@ -57,10 +58,25 @@ describe("keepOnlyLinks", () => {
     fs.symlinkSync(path.join(paths.store, "projects"), path.join(dir, "projects"));
     fs.writeFileSync(path.join(dir, ".credentials.json"), "{}");
     fs.mkdirSync(path.join(dir, "backups"));
-    fs.writeFileSync(path.join(dir, "CLAUDE.md"), "stub");
+    fs.writeFileSync(path.join(dir, "CLAUDE.md"), STUB_TEXT);
     assert.deepEqual(keepOnlyLinks(dir, table()), { kept: true, content: ["skills"] });
     assert.deepEqual(fs.readdirSync(dir).sort(), ["projects", "skills"]);
     assert.ok(fs.existsSync(path.join(paths.store, "projects")), "the store is untouched");
+  });
+
+  it("keeps a CLAUDE.md with more than the stub and files xclaude doesn't know, but not its own settings", () => {
+    const paths = setup();
+    const dir = path.join(paths.accounts, "acme");
+    fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, "CLAUDE.md"), `${STUB_TEXT}Prefer short answers.\n`);
+    fs.writeFileSync(path.join(dir, "statusline.sh"), "echo hi");
+    fs.writeFileSync(path.join(dir, "empty-notes.md"), "");
+    fs.writeFileSync(path.join(dir, "settings.json"), "{}");
+    fs.writeFileSync(path.join(dir, "keybindings.json"), "{}");
+    fs.writeFileSync(path.join(dir, "daemon.log.1"), "log");
+    fs.writeFileSync(path.join(dir, ".xclaude-tmp-x"), "temp");
+    assert.deepEqual(keepOnlyLinks(dir, table()), { kept: true, content: ["CLAUDE.md", "statusline.sh"] });
+    assert.deepEqual(fs.readdirSync(dir).sort(), ["CLAUDE.md", "statusline.sh"]);
   });
 
   it("removes a folder left with nothing, and refuses a symlinked one", () => {

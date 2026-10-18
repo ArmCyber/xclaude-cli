@@ -33,7 +33,7 @@ Update with `npm i -g xclaude-cli@latest`; xclaude checks npm once a day and pri
 | `xclaude set <name> [--model M] [--effort E] [--args "…"] [--unset model\|effort\|args] [--inherit on\|off\|reset]` | change an account's defaults; with no options, show them. `--inherit off` stops it taking `~/.claude/settings.json` |
 | `xclaude set main --enable\|--disable` | use the login in `~/.claude` (plain `claude`'s) as the account `main` |
 | `xclaude ls` | accounts with their login, defaults and config dir |
-| `xclaude rm <name> [--keep-login] [-y]` | remove an account and log it out; its folder keeps only its links, so its old conversations still open their saved long outputs. Run it on the name again to delete that folder (only while it holds nothing but links) |
+| `xclaude rm <name> [--keep-login] [-y]` | remove an account and log it out; its folder keeps its links, so its old conversations still open their saved long outputs, and files of its own, such as a `CLAUDE.md` you edited with `/memory`. Run it on the name again to delete that folder (only once it holds nothing but links) |
 | `xclaude rm --leftovers [-y]` | delete the leftover folders of all removed accounts, after a confirmation |
 | `xclaude tmux new\|attach\|ls\|kill` | Claude Code in tmux sessions, by label |
 | `xclaude shell install\|uninstall [--bash] [--zsh]` | completion (and the guard) in your shell |

@@ -46,7 +46,7 @@ export async function rmCommand(ctx: Ctx, config: Config, args: string[], listSe
 
   if (!yes) {
     if (!ctx.tty.stdin) throw new UsageError(`removing ${name} needs a confirmation: run it in a terminal, or pass -y`);
-    const ok = confirm(`Remove account ${name}? Its login and settings go; shared conversations and content stay in ~/.claude.`);
+    const ok = confirm(`Remove account ${name}? Its login, settings.json, keybindings.json and caches go; files of its own stay in its folder, shared conversations and content in ~/.claude.`);
     if (!ok) {
       log("xclaude: nothing removed");
       throw new Cancelled();

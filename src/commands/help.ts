@@ -53,9 +53,11 @@ Names use lowercase letters, digits and dashes, and start with a letter.
 Removes an account: stops its background sessions, logs it out, and deletes its
 login, settings and caches. Shared conversations and content stay in ~/.claude.
 
-Its folder keeps only its links into ~/.claude, so its old conversations can
-still open their saved long outputs. Run rm on the name again to delete that
-leftover folder, or --leftovers to delete every one, after a confirmation.
+Its folder keeps its links into ~/.claude, so its old conversations can still
+open their saved long outputs, and files of its own, such as a CLAUDE.md you
+edited with /memory. Once it holds only links, run rm on the name again to
+delete that leftover folder, or --leftovers to delete every one, after a
+confirmation.
 
   --keep-login  don't log the account out
   --leftovers   delete the leftover folders of all removed accounts
