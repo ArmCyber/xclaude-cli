@@ -1,24 +1,25 @@
-// xclaude add <name> [--model M] [--effort E] [--args "…"]
+// xclaude add <name> [--model M] [--effort E] [--args "…"] [--inherit on|off]
 import fs from "node:fs";
 import { authStatus, describeLogin } from "../claude/auth.ts";
 import { findClaude } from "../claude/resolve.ts";
 import { accountNameProblem, type Config, type Defaults, identities, loadConfig, saveConfig } from "../core/config.ts";
 import { EXIT_OK, UsageError, XError } from "../core/errors.ts";
-import { parseOptions } from "../core/options.ts";
+import { parseOptions, stringOption } from "../core/options.ts";
 import { accountDir, mkdirPrivate, tildify } from "../core/paths.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
 import { runChild } from "../launch/exec.ts";
+import { askInherit } from "../launch/inherit-question.ts";
 import { inheritSettings } from "../link/inherit.ts";
 import { listPlugins } from "../link/plugins.ts";
 import { problemLine, repairAccount, unmanageable } from "../link/repair.ts";
 import { shareTable } from "../link/table.ts";
 import { applyDefaultOptions, DEFAULT_OPTIONS } from "./defaults.ts";
 
-const USAGE = 'usage: xclaude add <name> [--model M] [--effort E] [--args "…"]';
+const USAGE = 'usage: xclaude add <name> [--model M] [--effort E] [--args "…"] [--inherit on|off]';
 
 export async function addCommand(ctx: Ctx, config: Config, args: string[]): Promise<number> {
-  const p = parseOptions(args, DEFAULT_OPTIONS, "add");
+  const p = parseOptions(args, { ...DEFAULT_OPTIONS, inherit: { value: true } }, "add");
   const [name, ...extra] = p.positionals;
   if (!name || extra.length) throw new UsageError(USAGE);
   const problem = accountNameProblem(name);
@@ -26,6 +27,8 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
   if (Object.hasOwn(config.accounts, name)) throw new XError(`account "${name}" already exists; change its defaults with: xclaude set ${name}`);
   const defaults: Defaults = { model: null, effort: null, args: [] };
   applyDefaultOptions(p, ctx.paths.home, defaults);
+  const inherit = stringOption(p, "inherit");
+  if (inherit !== undefined && inherit !== "on" && inherit !== "off") throw new UsageError(`--inherit takes on or off, not "${inherit}"`);
   // Before creating anything: without Claude Code there's nothing to log in with.
   const claude = findClaude(ctx.env, config, ctx.paths.home, ctx.selfPath);
 
@@ -33,6 +36,9 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
   const dir = accountDir(ctx.paths, name);
   const refusal = unmanageable(dir, ctx.paths.store);
   if (refusal) throw new XError(`not adding ${name}: ${tildify(dir, ctx.paths.home)} ${refusal}. Replace it with a real folder, or remove it, then add ${name} again.`);
+  // Asked before anything is created, so Esc leaves nothing behind.
+  const take = inherit !== undefined ? inherit === "on" : await askInherit(ctx, name);
+  if (take !== undefined) defaults.inherit = take;
   if (fs.existsSync(dir)) log(`xclaude: ${tildify(dir, ctx.paths.home)} already exists; reusing it`);
   mkdirPrivate(dir);
   const table = shareTable(config, ctx.switches);
@@ -45,8 +51,8 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
     log,
   });
   for (const pr of res.problems) log(`xclaude: ${problemLine(name, pr)}`);
-  inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
-  if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log, follow: true });
+  if (take) inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
+  if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log, follow: take === true });
   // Reload: another xclaude may have changed the config while this one waited for the repair.
   config = loadConfig(ctx.paths, { create: false }).config;
   config.accounts[name] = defaults;

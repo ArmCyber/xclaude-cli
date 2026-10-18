@@ -45,8 +45,7 @@ export function setCommand(ctx: Ctx, config: Config, args: string[]): number {
       else if (key === "model") target.model = null;
       else target.effort = null;
     }
-    if (inherit === "off") target.inherit = false;
-    else if (inherit !== undefined) delete target.inherit;
+    if (inherit !== undefined) target.inherit = inherit !== "off";
     if (p.values.enable) config.main.enabled = true;
     if (p.values.disable) config.main.enabled = false;
     saveConfig(ctx.paths, config);

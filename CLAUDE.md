@@ -37,7 +37,8 @@ src/link/           table (share table), repair (per-entry states and actions), 
                     (other logins' plugins, listed as off), leftover (what rm keeps
                     of a removed account)
 src/claude/         resolve (find claude), help (parse and cache --help), auth (auth status, runClaude)
-src/launch/         launch pipeline, args, env, exec (execve, spawn fallback, runChild), picker
+src/launch/         launch pipeline, args, env, exec (execve, spawn fallback, runChild), picker,
+                    inherit-question (asks once whether an account takes ~/.claude's setup)
 src/commands/       add, set, ls, rm, tmux, shell, guard, doctor, help,
                     hidden (__complete, __names, __update-check),
                     defaults (--model/--effort/--args parsing shared by add and set)

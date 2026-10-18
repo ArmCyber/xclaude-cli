@@ -123,6 +123,8 @@ describe("completion contexts", () => {
     assert.equal(rm.items.find((i) => i.value === "old")!.description, "leftover folder of a removed account");
     assert.deepEqual(values(["xclaude", "add", "new", "--model", "s"]).values, ["sonnet", "sonnet[1m]"]);
     assert.deepEqual(values(["xclaude", "add", ""]).values, []);
+    assert.deepEqual(values(["xclaude", "add", "new", "--"]).values, ["--model", "--effort", "--args", "--inherit"]);
+    assert.deepEqual(values(["xclaude", "add", "new", "--inherit", ""]).values, ["on", "off"]);
     assert.deepEqual(values(["xclaude", "shell", ""]).values, ["install", "uninstall", "completion"]);
     assert.deepEqual(values(["xclaude", "shell", "install", ""]).values, ["--bash", "--zsh"]);
     assert.deepEqual(values(["xclaude", "shell", "completion", ""]).values, ["bash", "zsh"]);

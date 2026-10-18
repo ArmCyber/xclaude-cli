@@ -16,6 +16,7 @@ import { shareTable } from "../link/table.ts";
 import { takeNewUnknown, unknownEntries, unknownNotice } from "../link/unknown.ts";
 import { buildArgs, hasFlag, needsHelp } from "./args.ts";
 import { buildEnv } from "./env.ts";
+import { settleInherit } from "./inherit-question.ts";
 import { pick, preselect } from "./picker.ts";
 
 /** The picker's entries: each enabled identity with its defaults, e.g. "acme   opus · max". */
@@ -98,14 +99,16 @@ export async function launch(ctx: Ctx, config: Config, account: string, userArgs
   if (!defaults) throw unknownAccount(account, config);
   const isMain = account === MAIN;
 
-  // 2. The link engine, for regular accounts only.
-  const unknown = isMain ? [] : prepareAccount(ctx, config, account);
+  // 2. The link engine, for regular accounts only, once the account has said
+  //    whether it takes ~/.claude's setup (its first launch in a terminal asks).
+  const settled = isMain ? config : await settleInherit(ctx, config, account);
+  const unknown = isMain ? [] : prepareAccount(ctx, settled, account);
 
   // 5 before 3: the arguments may need the binary's parsed --help.
   const claude = findClaude(ctx.env, config, ctx.paths.home, ctx.selfPath);
   // 3. Arguments.
   const help = needsHelp(defaults, userArgs) ? loadHelp(claude, ctx.paths.cache, ctx.env) : null;
-  const mcp = isMain ? null : mcpForLaunch(ctx, config, account, defaults, userArgs, help);
+  const mcp = isMain ? null : mcpForLaunch(ctx, settled, account, defaults, userArgs, help);
   const args = [...(mcp ? [`--mcp-config=${mcp}`] : []), ...buildArgs(defaults, userArgs, help)];
   // 4. Environment.
   const env = buildEnv(ctx.env, { name: account, configDir: isMain ? null : accountDir(ctx.paths, account) });

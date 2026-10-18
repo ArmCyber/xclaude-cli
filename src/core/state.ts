@@ -12,13 +12,23 @@ export interface State {
   listedPlugins: Record<string, string[]>;
   /** Per account, the plugins xclaude turned on in its settings.json because ~/.claude has them on. */
   turnedOnPlugins: Record<string, string[]>;
+  /** Accounts told, at a launch without a terminal, how to choose whether they take ~/.claude's setup. */
+  inheritNoted: string[];
 }
 
 /** lastAccountByDir keeps the most recently used directories only. */
 const MAX_DIRS = 500;
 
 export function emptyState(): State {
-  return { installedVersion: null, lastAccountByDir: {}, lastUsedAccount: null, seenUnknownEntries: {}, listedPlugins: {}, turnedOnPlugins: {} };
+  return {
+    installedVersion: null,
+    lastAccountByDir: {},
+    lastUsedAccount: null,
+    seenUnknownEntries: {},
+    listedPlugins: {},
+    turnedOnPlugins: {},
+    inheritNoted: [],
+  };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -53,6 +63,7 @@ export function loadState(paths: Paths): State {
       if (Array.isArray(ids)) state[key][name] = ids.filter((id) => typeof id === "string");
     }
   }
+  if (Array.isArray(raw.inheritNoted)) state.inheritNoted = raw.inheritNoted.filter((name) => typeof name === "string");
   return state;
 }
 
@@ -87,4 +98,5 @@ export function forgetAccount(state: State, account: string): void {
   delete state.seenUnknownEntries[account];
   delete state.listedPlugins[account];
   delete state.turnedOnPlugins[account];
+  state.inheritNoted = state.inheritNoted.filter((name) => name !== account);
 }

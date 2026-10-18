@@ -28,22 +28,31 @@ Commands:
 Conversations, prompt history, memory and personal content (skills, agents,
 commands, plugins…) are shared by every account, so \`xclaude other -c\`
 continues the last conversation in this folder, whichever account it ran on.
-Each account also takes what ~/.claude/settings.json sets (rules, hooks, auto
-mode…) at every launch, keeping its own changes, and gets the MCP servers in
-~/.claude.json; set <name> --inherit off stops that. A plugin installed under
-another login shows in /plugin, on when ~/.claude has it on, otherwise off.
+An account can also take what ~/.claude/settings.json sets (rules, hooks, auto
+mode…) at every launch, keeping its own changes, with the plugins ~/.claude
+has on and the MCP servers in ~/.claude.json. Its first launch in a terminal
+asks; set <name> --inherit on|off changes the answer. A plugin installed under
+another login shows in /plugin: on when the account takes ~/.claude's setup
+and ~/.claude has it on, otherwise off.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
   add: `Usage: xclaude add <name> [--model M] [--effort E] [--args "…"]
+                   [--inherit on|off]
 
 Creates the account, links it to the shared ~/.claude, then starts Claude Code
 in it so you can go through the first-run screens and log in with /login.
+First, when ~/.claude has something to give, it asks whether the account takes
+~/.claude's setup: what ~/.claude/settings.json sets, the plugins ~/.claude has
+on and the MCP servers in ~/.claude.json.
 
   --model M     default model, e.g. opus or sonnet
   --effort E    default effort: low, medium, high, xhigh, max or ultracode
   --args "…"    extra Claude Code arguments for every launch, split like a
                 shell line
+  --inherit on|off
+                answer that question up front: on takes ~/.claude's setup now
+                and at every launch, off leaves the account as it is
 
 Names use lowercase letters, digits and dashes, and start with a letter.
 `,
@@ -81,11 +90,13 @@ Arguments typed at launch always win over these defaults.
   --args "…"     extra Claude Code arguments, split like a shell line
   --unset KEY    clear model, effort or args
   --inherit on|off|reset
-                 on (the default): take what ~/.claude/settings.json sets at
-                 every launch, except login-bound settings such as env, and
-                 the MCP servers in ~/.claude.json; the account's own changes
-                 stay. off: stop, and take back what it took and hasn't
-                 changed since. reset: take everything again.
+                 on: take what ~/.claude/settings.json sets at every launch,
+                 except login-bound settings such as env, with the plugins
+                 ~/.claude has on and the MCP servers in ~/.claude.json; the
+                 account's own changes stay. off: stop, and take back what it
+                 took and hasn't changed since. reset: take everything again.
+                 Until one is set, the account's first launch in a terminal
+                 asks.
   --enable       (main only) use the login in ~/.claude as the account "main"
   --disable      (main only) turn it off again
 `,

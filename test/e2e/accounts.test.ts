@@ -46,7 +46,7 @@ describe("add", () => {
     const record = [{ scope: "user", installPath: "/x" }];
     fs.writeFileSync(path.join(sb.store, "plugins", "installed_plugins.json"), JSON.stringify({ version: 2, plugins: { "foo@m": record, "bar@m": record } }));
     fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ enabledPlugins: { "foo@m": true } }));
-    const res = sb.run(["add", "acme"]);
+    const res = sb.run(["add", "acme", "--inherit", "on"]);
     assert.equal(res.status, 0, res.stderr);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")).enabledPlugins, { "bar@m": false, "foo@m": true });
     assert.match(res.stderr, /acme turned on what ~\/\.claude has on: foo@m/);
@@ -57,10 +57,36 @@ describe("add", () => {
   it("merges ~/.claude/settings.json into the new account before claude first starts", () => {
     fs.mkdirSync(sb.store, { recursive: true });
     fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { deny: ["Bash(git push *)"] }, env: { A: "1" } }));
-    const res = sb.run(["add", "acme"]);
+    const res = sb.run(["add", "acme", "--inherit", "on"]);
     assert.equal(res.status, 0, res.stderr);
+    assert.equal(config().accounts.acme.inherit, true);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")), { permissions: { deny: ["Bash(git push *)"] } });
     assert.ok(res.stderr.indexOf("acme takes ~/.claude/settings.json now (permissions)") < res.stderr.indexOf("Starting Claude Code in it"));
+  });
+
+  it("takes nothing from ~/.claude with --inherit off", () => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { deny: ["Bash(git push *)"] } }));
+    const res = sb.run(["add", "acme", "--inherit", "off"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(config().accounts.acme.inherit, false);
+    assert.ok(!fs.existsSync(path.join(accDir("acme"), "settings.json")));
+    assert.doesNotMatch(res.stderr, /until you choose/);
+  });
+
+  it("without a terminal, leaves the choice open, takes nothing and says once how to choose", () => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { deny: ["Bash(git push *)"] } }));
+    const note = /acme doesn't take ~\/\.claude's settings, plugins and MCP servers until you choose: launch it in a terminal, or run xclaude set acme --inherit on \(or off\)/;
+    let res = sb.run(["add", "acme"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stderr, note);
+    assert.equal(config().accounts.acme.inherit, undefined);
+    assert.ok(!fs.existsSync(path.join(accDir("acme"), "settings.json")), "nothing taken");
+    res = sb.run(["acme", "-p", "hi"]);
+    assert.doesNotMatch(res.stderr, note, "said once");
+    assert.ok(!fs.existsSync(path.join(accDir("acme"), "settings.json")));
+    assert.match(sb.run(["set", "acme"]).stdout, /inherit not chosen yet/);
   });
 
   it("explains how to log in later", () => {
@@ -87,6 +113,7 @@ describe("add", () => {
       [["add", "acme", "--effort", "extreme"], /--effort must be one of/],
       [["add", "acme", "--args", "'open"], /unterminated '/],
       [["add", "acme", "--bogus"], /add: unknown option --bogus/],
+      [["add", "acme", "--inherit", "maybe"], /--inherit takes on or off, not "maybe"/],
     ] as const) {
       const res = sb.run([...args]);
       assert.equal(res.status, 2, args.join(" "));
@@ -107,9 +134,9 @@ describe("set", () => {
 
   it("prints and edits the defaults", () => {
     let res = sb.run(["set", "acme"]);
-    assert.equal(res.stdout, "acme\n  model   –\n  effort  –\n  args    –\n  inherit on\n");
+    assert.equal(res.stdout, "acme\n  model   –\n  effort  –\n  args    –\n  inherit not chosen yet\n");
     res = sb.run(["set", "acme", "--model", "opus", "--effort", "xhigh", "--args", "--chrome --add-dir '/a b'"]);
-    assert.equal(res.stdout, "acme\n  model   opus\n  effort  xhigh\n  args    --chrome --add-dir '/a b'\n  inherit on\n");
+    assert.equal(res.stdout, "acme\n  model   opus\n  effort  xhigh\n  args    --chrome --add-dir '/a b'\n  inherit not chosen yet\n");
     assert.deepEqual(config().accounts.acme, { model: "opus", effort: "xhigh", args: ["--chrome", "--add-dir", "/a b"] });
     sb.run(["set", "acme", "--unset", "model", "--unset=args"]);
     assert.deepEqual(config().accounts.acme, { model: null, effort: "xhigh", args: [] });
@@ -120,10 +147,13 @@ describe("set", () => {
     const read = () => JSON.parse(fs.readFileSync(settings, "utf8"));
     fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, theme: "dark" }));
     sb.run(["acme", "-p", "hi"]);
+    assert.ok(!fs.existsSync(settings), "nothing until it's chosen");
+    let res = sb.run(["set", "acme", "--inherit", "on"]);
+    assert.equal(config().accounts.acme.inherit, true);
     assert.deepEqual(read(), { permissions: { allow: ["Read"] }, theme: "dark" });
     fs.writeFileSync(settings, JSON.stringify({ ...read(), theme: "light" }));
 
-    let res = sb.run(["set", "acme", "--inherit", "off"]);
+    res = sb.run(["set", "acme", "--inherit", "off"]);
     assert.equal(res.status, 0, res.stderr);
     assert.match(res.stdout, /inherit off/);
     assert.equal(config().accounts.acme.inherit, false);
@@ -133,7 +163,7 @@ describe("set", () => {
     assert.deepEqual(read(), { theme: "light" }, "a launch no longer merges");
 
     res = sb.run(["set", "acme", "--inherit=on"]);
-    assert.equal(config().accounts.acme.inherit, undefined);
+    assert.equal(config().accounts.acme.inherit, true);
     assert.deepEqual(read(), { theme: "light", permissions: { allow: ["Read"] } });
     fs.writeFileSync(settings, JSON.stringify({ theme: "light" }));
     sb.run(["acme", "-p", "hi"]);
@@ -435,5 +465,61 @@ describe("rm", () => {
     assert.equal(res.status, 2);
     assert.match(res.stderr, /main identity isn't removable/);
     assert.ok(fs.existsSync(accDir("acme")));
+  });
+});
+
+describe("the question whether an account takes ~/.claude's setup", () => {
+  beforeEach(() => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] } }));
+    fs.writeFileSync(path.join(sb.home, ".claude.json"), JSON.stringify({ mcpServers: { jira: { type: "http", url: "https://jira.example.com/mcp" } } }));
+    fs.mkdirSync(sb.xhome, { recursive: true });
+    fs.writeFileSync(path.join(sb.xhome, "config.json"), JSON.stringify({ accounts: { acme: {} } }));
+  });
+
+  const status = () => path.join(sb.root, "status");
+  const finish = async (session: string) => {
+    await waitFor(() => fs.existsSync(status()), "xclaude to finish", 10_000, () => capture(sb, session));
+    const code = fs.readFileSync(status(), "utf8").trim();
+    fs.rmSync(status());
+    return code;
+  };
+
+  it("asks on the first launch in a terminal, keeps the answer and doesn't ask again", async (t) => {
+    if (!needTmux(sb, t)) return;
+    startPane(sb, "q1", `xclaude acme; echo $? > ${status()}`);
+    await waitFor(() => capture(sb, "q1").includes("Take it into acme?"), "the question", 10_000, () => capture(sb, "q1"));
+    const screen = capture(sb, "q1");
+    assert.match(screen, /acme can take what you set up for plain claude in ~\/\.claude:/);
+    assert.match(screen, /settings {2}permissions/);
+    assert.match(screen, /MCP {7}jira/);
+    assert.match(screen, /❯ 1 {2}Yes/);
+    tmux(sb, ["send-keys", "-t", "q1", "Escape"]);
+    assert.equal(await finish("q1"), "130", "Esc cancels the launch");
+    assert.equal(config().accounts.acme.inherit, undefined);
+    assert.equal(sb.fakeCalls().filter((c) => c.argv[0] !== "--help").length, 0);
+
+    startPane(sb, "q2", `xclaude acme; echo $? > ${status()}`);
+    await waitFor(() => capture(sb, "q2").includes("Take it into acme?"), "the question again");
+    tmux(sb, ["send-keys", "-t", "q2", "Enter"]);
+    assert.equal(await finish("q2"), "0");
+    assert.equal(config().accounts.acme.inherit, true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")), { permissions: { allow: ["Read"] } });
+    assert.match(sb.fakeCalls().at(-1)!.argv[0]!, /^--mcp-config=/);
+
+    startPane(sb, "q3", `xclaude acme; echo $? > ${status()}; sleep 30`);
+    assert.equal(await finish("q3"), "0");
+    assert.doesNotMatch(capture(sb, "q3"), /Take it into acme\?/, "asked once");
+  });
+
+  it("asks in add too, and No takes nothing", async (t) => {
+    if (!needTmux(sb, t)) return;
+    startPane(sb, "a", `xclaude add beta; echo $? > ${status()}`);
+    await waitFor(() => capture(sb, "a").includes("Take it into beta?"), "the question", 10_000, () => capture(sb, "a"));
+    tmux(sb, ["send-keys", "-t", "a", "2", "Enter"]);
+    assert.equal(await finish("a"), "0");
+    assert.equal(config().accounts.beta.inherit, false);
+    assert.ok(!fs.existsSync(path.join(accDir("beta"), "settings.json")));
+    assert.match(sb.run(["set", "beta"]).stdout, /inherit off/);
   });
 });

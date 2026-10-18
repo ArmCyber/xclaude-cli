@@ -25,11 +25,12 @@ export function applyDefaultOptions(p: Parsed, home: string, into: Defaults): vo
 
 /** Two-column listing of an identity's defaults; an account's also says whether it takes ~/.claude's settings. */
 export function formatDefaults(d: Defaults, account = false): string {
+  const inherit = d.inherit === undefined ? "not chosen yet" : d.inherit ? "on" : "off";
   return [
     `  model   ${d.model ?? DASH}`,
     `  effort  ${d.effort ?? DASH}`,
     `  args    ${d.args.length ? quoteShellWords(d.args) : DASH}`,
-    ...(account ? [`  inherit ${d.inherit === false ? "off" : "on"}`] : []),
+    ...(account ? [`  inherit ${inherit}`] : []),
   ]
     .map((l) => `${l}\n`)
     .join("");

@@ -88,6 +88,17 @@ describe("doctor", () => {
     fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, theme: "dark" }));
     fs.writeFileSync(settings, JSON.stringify({ theme: "light" }));
     let res = doctor();
+    assert.match(
+      res.stdout,
+      /· hasn't chosen whether to take ~\/\.claude's settings, plugins and MCP servers; its next launch in a terminal asks \(or: xclaude set acme --inherit on, or off\)/,
+    );
+    doctor(["--fix"]);
+    assert.deepEqual(JSON.parse(fs.readFileSync(settings, "utf8")), { theme: "light" }, "--fix doesn't answer for it");
+    const configFile = path.join(sb.xhome, "config.json");
+    const c = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    c.accounts.acme.inherit = true;
+    fs.writeFileSync(configFile, JSON.stringify(c));
+    res = doctor();
     assert.equal(res.status, 0, res.stdout);
     assert.match(res.stdout, /· ~\/\.claude\/settings\.json changes not taken yet: permissions \(the next launch, or --fix, takes them\)/);
     res = doctor(["--fix"]);

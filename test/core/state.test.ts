@@ -32,6 +32,7 @@ describe("state", () => {
     recordUse(s, "/home/u/code/api", "acme");
     s.seenUnknownEntries.acme = ["foo"];
     s.listedPlugins.acme = ["foo@market"];
+    s.inheritNoted = ["acme"];
     saveState(paths, s);
     assert.deepEqual(loadState(paths), s);
     assert.equal(fs.statSync(paths.state).mode & 0o777, 0o600);
@@ -56,11 +57,13 @@ describe("state", () => {
     recordUse(s, "/z", "acme");
     s.seenUnknownEntries.acme = ["foo"];
     s.listedPlugins.acme = ["foo@market"];
+    s.inheritNoted = ["acme", "other"];
     forgetAccount(s, "acme");
     assert.deepEqual(s.lastAccountByDir, { "/y": "other" });
     assert.equal(s.lastUsedAccount, null);
     assert.deepEqual(s.seenUnknownEntries, {});
     assert.deepEqual(s.listedPlugins, {});
+    assert.deepEqual(s.inheritNoted, ["other"]);
   });
 
   it("updateState reads, changes and writes", () => {

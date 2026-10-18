@@ -178,7 +178,8 @@ function changesNothing(plan: PluginPlan, tracked: Tracked): boolean {
   return plan.text === null && same(plan.tracked.off, tracked.off) && same(plan.tracked.on, tracked.on);
 }
 
-function trackedOf(paths: Paths, account: string): Tracked {
+/** The plugin entries xclaude wrote to the account's settings.json, from the state. */
+export function trackedOf(paths: Paths, account: string): Tracked {
   const state = loadState(paths);
   return { off: state.listedPlugins[account] ?? [], on: state.turnedOnPlugins[account] ?? [] };
 }

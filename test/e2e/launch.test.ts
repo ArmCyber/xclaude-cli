@@ -12,7 +12,7 @@ beforeEach(() => {
   fs.mkdirSync(sb.xhome, { recursive: true });
   fs.writeFileSync(
     path.join(sb.xhome, "config.json"),
-    JSON.stringify({ accounts: { acme: { model: "opus", effort: "max", args: ["--add-dir", "/a", "/b"] }, other: {} } }),
+    JSON.stringify({ accounts: { acme: { model: "opus", effort: "max", args: ["--add-dir", "/a", "/b"] }, other: { inherit: true } } }),
   );
 });
 afterEach(() => sb.cleanup());
@@ -46,6 +46,20 @@ describe("launch, end to end", () => {
     assert.ok(!fs.existsSync(file));
     sb.run(["other", "-p", "hi"]);
     assert.deepEqual(sb.fakeCalls().at(-1)!.argv, ["-p", "hi"], "not once it's turned off");
+  });
+
+  it("launches an account that hasn't chosen as it is, without a terminal, and says once how to choose", () => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] } }));
+    fs.writeFileSync(path.join(sb.home, ".claude.json"), JSON.stringify({ mcpServers: { jira: { type: "http", url: "https://jira.example.com/mcp" } } }));
+    const note = /acme doesn't take ~\/\.claude's settings, plugins and MCP servers until you choose/;
+    let res = sb.run(["acme", "-p", "hi"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stderr, note);
+    assert.ok(!sb.fakeCalls().at(-1)!.argv.some((a) => a.startsWith("--mcp-config")));
+    assert.ok(!fs.existsSync(path.join(sb.xhome, "accounts", "acme", "settings.json")));
+    res = sb.run(["acme", "-p", "hi"]);
+    assert.doesNotMatch(res.stderr, note, "said once");
   });
 
   it("passes --help after an account on to claude", () => {

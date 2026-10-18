@@ -20,7 +20,11 @@ export interface Defaults {
   model: string | null;
   effort: Effort | null;
   args: string[];
-  /** Accounts only: false stops taking ~/.claude's settings and MCP servers (link/inherit.ts). Absent means on. */
+  /**
+   * Accounts only: whether it takes the ~/.claude login's settings, plugins and MCP servers
+   * (link/inherit.ts). Absent until the account's first launch in a terminal asks
+   * (launch/inherit-question.ts); until then it takes nothing.
+   */
   inherit?: boolean;
 }
 
@@ -200,9 +204,9 @@ export function identities(config: Config): string[] {
   return names;
 }
 
-/** Whether an account takes ~/.claude's settings and MCP servers; never the main identity, which is ~/.claude. */
+/** Whether an account takes ~/.claude's settings and MCP servers: only once it said yes; never the main identity, which is ~/.claude. */
 export function inherits(config: Config, name: string): boolean {
-  return name !== MAIN && Object.hasOwn(config.accounts, name) && config.accounts[name]!.inherit !== false;
+  return name !== MAIN && Object.hasOwn(config.accounts, name) && config.accounts[name]!.inherit === true;
 }
 
 /** An identity's defaults, or null if it doesn't exist or is disabled. */

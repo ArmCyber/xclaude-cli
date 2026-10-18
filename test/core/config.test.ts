@@ -140,13 +140,15 @@ describe("identities and defaults", () => {
     assert.equal(defaultsOf(c, "constructor"), null);
   });
 
-  it("takes ~/.claude's settings in every account unless it's turned off, never in main", () => {
+  it("takes ~/.claude's settings only in accounts that said yes, never in main", () => {
     const c = defaultConfig();
-    c.accounts.a = { model: null, effort: null, args: [] };
+    c.accounts.a = { model: null, effort: null, args: [], inherit: true };
     c.accounts.b = { model: null, effort: null, args: [], inherit: false };
+    c.accounts.c = { model: null, effort: null, args: [] };
     c.main.enabled = true;
     assert.equal(inherits(c, "a"), true);
     assert.equal(inherits(c, "b"), false);
+    assert.equal(inherits(c, "c"), false, "not asked yet");
     assert.equal(inherits(c, "main"), false);
     assert.equal(inherits(c, "missing"), false);
   });

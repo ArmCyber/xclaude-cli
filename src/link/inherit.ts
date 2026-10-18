@@ -232,7 +232,7 @@ export function forgetInherit(paths: Paths, account: string): void {
 }
 
 /** "a, b, c", or the first six "and 3 more". */
-function listed(names: string[]): string {
+export function listed(names: string[]): string {
   return names.length > 6 ? `${names.slice(0, 6).join(", ")} and ${names.length - 6} more` : names.join(", ");
 }
 

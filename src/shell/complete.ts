@@ -193,7 +193,7 @@ class Completer {
     if (first.startsWith("-")) return this.claudeArgs(args, cur); // the picker path
     switch (first) {
       case "add":
-        return this.own(rest, cur, { "--model": "model", "--effort": "effort", "--args": "text" }, 1, () => []);
+        return this.own(rest, cur, { "--model": "model", "--effort": "effort", "--args": "text", "--inherit": "inherit-add" }, 1, () => []);
       case "rm":
         if (rest.includes("--leftovers")) return this.own(rest, cur, { "-y": null }, 0, () => []);
         return this.own(
@@ -233,7 +233,7 @@ class Completer {
   own(
     rest: string[],
     cur: string,
-    flags: Record<string, "model" | "effort" | "unset" | "inherit" | "text" | null>,
+    flags: Record<string, "model" | "effort" | "unset" | "inherit" | "inherit-add" | "text" | null>,
     max: number,
     positional: () => string[],
     describe: (name: string) => string | undefined = (n) => (n === MAIN || this.config.accounts[n] ? this.describeIdentity(n) : undefined),
@@ -254,9 +254,19 @@ class Completer {
     return words(positional(), describe);
   }
 
-  ownValues(kind: "model" | "effort" | "unset" | "inherit" | "text" | null, prefix: string): Completion {
+  ownValues(kind: "model" | "effort" | "unset" | "inherit" | "inherit-add" | "text" | null, prefix: string): Completion {
     const values =
-      kind === "model" ? MODEL_ALIASES : kind === "effort" ? EFFORTS : kind === "unset" ? ["model", "effort", "args"] : kind === "inherit" ? ["on", "off", "reset"] : [];
+      kind === "model"
+        ? MODEL_ALIASES
+        : kind === "effort"
+          ? EFFORTS
+          : kind === "unset"
+            ? ["model", "effort", "args"]
+            : kind === "inherit"
+              ? ["on", "off", "reset"]
+              : kind === "inherit-add"
+                ? ["on", "off"]
+                : [];
     return words(values.map((v) => `${prefix}${v}`));
   }
 

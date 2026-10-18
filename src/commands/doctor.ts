@@ -14,6 +14,7 @@ import { accountDir, tildify } from "../core/paths.ts";
 import { loadState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
+import { setupPreview } from "../launch/inherit-question.ts";
 import { inheritable, inheritSettings, inheritStatus, mainSettings } from "../link/inherit.ts";
 import { mcpServersFor } from "../link/mcp.ts";
 import { normalizePaths } from "../link/normalize.ts";
@@ -223,7 +224,12 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
         }
         const unknown = unknownEntries(insp.names, table);
         if (unknown.length) report.add("info", `per-account entries xclaude doesn't know: ${unknown.join(", ")}`, 2);
-        if (shared && !inherits(config, name)) {
+        const choice = config.accounts[name]?.inherit;
+        if (choice === undefined) {
+          if (setupPreview(ctx.paths, name).length) {
+            report.add("info", `hasn't chosen whether to take ~/.claude's settings, plugins and MCP servers; its next launch in a terminal asks (or: xclaude set ${name} --inherit on, or off)`, 2);
+          }
+        } else if (shared && !choice) {
           report.add("info", `doesn't take ~/.claude/settings.json (turn that on with: xclaude set ${name} --inherit on)`, 2);
         } else if (shared) {
           const status = inheritStatus(ctx.paths, name, shared);
