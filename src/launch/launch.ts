@@ -1,19 +1,20 @@
 // The launch pipeline: `xclaude <account> [args…]`.
-import { loadHelp } from "../claude/help.ts";
+import { type HelpInfo, isSubcommand, loadHelp } from "../claude/help.ts";
 import { findClaude } from "../claude/resolve.ts";
-import { type Config, defaultsOf, describeDefaults, identities, inherits, MAIN } from "../core/config.ts";
+import { type Config, type Defaults, defaultsOf, describeDefaults, identities, inherits, MAIN } from "../core/config.ts";
 import { UsageError, XError } from "../core/errors.ts";
 import { accountDir, tildify } from "../core/paths.ts";
 import { loadState, recordUse, updateState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { unknownAccount } from "../grammar.ts";
 import { inheritSettings } from "../link/inherit.ts";
+import { prepareMcp } from "../link/mcp.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { listPlugins } from "../link/plugins.ts";
 import { LAUNCH_LOCK_WAIT_MS, problemLine, repairAccount } from "../link/repair.ts";
 import { shareTable } from "../link/table.ts";
 import { takeNewUnknown, unknownEntries, unknownNotice } from "../link/unknown.ts";
-import { buildArgs, needsHelp } from "./args.ts";
+import { buildArgs, hasFlag, needsHelp } from "./args.ts";
 import { buildEnv } from "./env.ts";
 import { pick, preselect } from "./picker.ts";
 
@@ -75,6 +76,22 @@ function repairForLaunch(ctx: Ctx, config: Config, account: string, log: (line: 
   return unknownEntries(res.names, table);
 }
 
+/**
+ * The --mcp-config file with the ~/.claude login's MCP servers, for a session of
+ * an account that takes them. Not for subcommands, nor for a session started with
+ * --strict-mcp-config, which asks for only the servers it's given.
+ */
+function mcpForLaunch(ctx: Ctx, config: Config, account: string, defaults: Defaults, userArgs: string[], help: HelpInfo | null): string | null {
+  if (!inherits(config, account) || isSubcommand(userArgs[0], help)) return null;
+  if (hasFlag(userArgs, "--strict-mcp-config") || hasFlag(defaults.args, "--strict-mcp-config")) return null;
+  try {
+    return prepareMcp(ctx.paths, account);
+  } catch (e) {
+    ctx.io.err(`xclaude: couldn't pass ~/.claude.json's MCP servers to ${account} (${(e as Error).message}); launching without them\n`);
+    return null;
+  }
+}
+
 export async function launch(ctx: Ctx, config: Config, account: string, userArgs: string[]): Promise<number> {
   // 1. Resolve the account (the grammar and the picker only pass known ones).
   const defaults = defaultsOf(config, account);
@@ -88,7 +105,8 @@ export async function launch(ctx: Ctx, config: Config, account: string, userArgs
   const claude = findClaude(ctx.env, config, ctx.paths.home, ctx.selfPath);
   // 3. Arguments.
   const help = needsHelp(defaults, userArgs) ? loadHelp(claude, ctx.paths.cache, ctx.env) : null;
-  const args = buildArgs(defaults, userArgs, help);
+  const mcp = isMain ? null : mcpForLaunch(ctx, config, account, defaults, userArgs, help);
+  const args = [...(mcp ? [`--mcp-config=${mcp}`] : []), ...buildArgs(defaults, userArgs, help)];
   // 4. Environment.
   const env = buildEnv(ctx.env, { name: account, configDir: isMain ? null : accountDir(ctx.paths, account) });
 

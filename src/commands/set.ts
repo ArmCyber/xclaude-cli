@@ -6,6 +6,7 @@ import { parseOptions, stringOption } from "../core/options.ts";
 import type { Ctx } from "../ctx.ts";
 import { unknownAccount } from "../grammar.ts";
 import { inheritSettings, resetInherit, stopInheriting } from "../link/inherit.ts";
+import { forgetMcp } from "../link/mcp.ts";
 import { listPlugins } from "../link/plugins.ts";
 import { applyDefaultOptions, DEFAULT_OPTIONS, formatDefaults } from "./defaults.ts";
 
@@ -67,6 +68,7 @@ function applyInherit(ctx: Ctx, name: string, inherit: string): void {
       log(`xclaude: Claude Code wrote ${name}'s settings.json meanwhile, so what it took from ~/.claude/settings.json is still there; run this again`);
     }
     listPlugins(ctx.paths, name, { ...opts, turnOffOwn: true });
+    forgetMcp(ctx.paths, name);
     return;
   }
   if (inherit === "reset") resetInherit(ctx.paths, name, opts);

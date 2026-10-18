@@ -30,6 +30,24 @@ describe("launch, end to end", () => {
     assert.equal(call!.env.XCLAUDE_ACCOUNT, "acme");
   });
 
+  it("passes the ~/.claude login's MCP servers to accounts that take its settings", () => {
+    const jira = { type: "http", url: "https://jira.example.com/mcp" };
+    fs.writeFileSync(path.join(sb.home, ".claude.json"), JSON.stringify({ mcpServers: { jira } }));
+    const file = path.join(sb.xhome, "inherit", "other.mcp.json");
+    sb.run(["other", "-p", "hi"]);
+    assert.deepEqual(sb.fakeCalls().at(-1)!.argv, [`--mcp-config=${file}`, "-p", "hi"]);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { mcpServers: { jira } });
+
+    sb.run(["other", "mcp", "list"]);
+    assert.deepEqual(sb.fakeCalls().at(-1)!.argv, ["mcp", "list"], "not for subcommands");
+    sb.run(["other", "--strict-mcp-config", "-p", "hi"]);
+    assert.deepEqual(sb.fakeCalls().at(-1)!.argv, ["--strict-mcp-config", "-p", "hi"], "not with --strict-mcp-config");
+    sb.run(["set", "other", "--inherit", "off"]);
+    assert.ok(!fs.existsSync(file));
+    sb.run(["other", "-p", "hi"]);
+    assert.deepEqual(sb.fakeCalls().at(-1)!.argv, ["-p", "hi"], "not once it's turned off");
+  });
+
   it("passes --help after an account on to claude", () => {
     const res = sb.run(["acme", "--help"]);
     assert.equal(res.status, 0, res.stderr);

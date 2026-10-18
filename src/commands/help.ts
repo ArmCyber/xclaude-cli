@@ -29,9 +29,9 @@ Conversations, prompt history, memory and personal content (skills, agents,
 commands, plugins…) are shared by every account, so \`xclaude other -c\`
 continues the last conversation in this folder, whichever account it ran on.
 Each account also takes what ~/.claude/settings.json sets (rules, hooks, auto
-mode…) at every launch, keeping its own changes; set <name> --inherit off
-stops that. A plugin installed under another login shows in /plugin, on when
-~/.claude has it on, otherwise off.
+mode…) at every launch, keeping its own changes, and gets the MCP servers in
+~/.claude.json; set <name> --inherit off stops that. A plugin installed under
+another login shows in /plugin, on when ~/.claude has it on, otherwise off.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -80,9 +80,10 @@ Arguments typed at launch always win over these defaults.
   --unset KEY    clear model, effort or args
   --inherit on|off|reset
                  on (the default): take what ~/.claude/settings.json sets at
-                 every launch, except login-bound settings such as env; the
-                 account's own changes stay. off: stop, and take back what it
-                 took and hasn't changed since. reset: take everything again.
+                 every launch, except login-bound settings such as env, and
+                 the MCP servers in ~/.claude.json; the account's own changes
+                 stay. off: stop, and take back what it took and hasn't
+                 changed since. reset: take everything again.
   --enable       (main only) use the login in ~/.claude as the account "main"
   --disable      (main only) turn it off again
 `,

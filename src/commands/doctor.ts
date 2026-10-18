@@ -15,6 +15,7 @@ import { loadState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
 import { inheritable, inheritSettings, inheritStatus, mainSettings } from "../link/inherit.ts";
+import { mcpServersFor } from "../link/mcp.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { strayFolders } from "../link/leftover.ts";
 import { listPlugins, mainPlugins, planPlugins } from "../link/plugins.ts";
@@ -233,6 +234,8 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
             report.add("ok", `takes ~/.claude/settings.json${status.own.length ? `, keeping its own ${status.own.join(", ")}` : ""}`, 2);
           }
         }
+        const servers = inherits(config, name) ? Object.keys(mcpServersFor(ctx.paths, name) ?? {}) : [];
+        if (servers.length) report.add("ok", `gets ~/.claude.json's MCP servers at launch: ${servers.join(", ")}`, 2);
         const tracked = { off: pluginState.listedPlugins[name] ?? [], on: pluginState.turnedOnPlugins[name] ?? [] };
         const plan = table.dirs.includes("plugins") ? planPlugins(ctx.paths, name, tracked, inherits(config, name) ? mainOn : null) : null;
         const them = (ids: string[]) => (ids.length === 1 ? "it" : "them");
