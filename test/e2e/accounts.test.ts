@@ -41,6 +41,19 @@ describe("add", () => {
     assert.ok(res.stderr.indexOf("foo@m is installed under another login") < res.stderr.indexOf("Starting Claude Code in it"));
   });
 
+  it("turns on the installed plugins ~/.claude has on", () => {
+    fs.mkdirSync(path.join(sb.store, "plugins"), { recursive: true });
+    const record = [{ scope: "user", installPath: "/x" }];
+    fs.writeFileSync(path.join(sb.store, "plugins", "installed_plugins.json"), JSON.stringify({ version: 2, plugins: { "foo@m": record, "bar@m": record } }));
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ enabledPlugins: { "foo@m": true } }));
+    const res = sb.run(["add", "acme"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")).enabledPlugins, { "bar@m": false, "foo@m": true });
+    assert.match(res.stderr, /acme turned on what ~\/\.claude has on: foo@m/);
+    sb.run(["set", "acme", "--inherit", "off"]);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")).enabledPlugins, { "bar@m": false, "foo@m": false });
+  });
+
   it("merges ~/.claude/settings.json into the new account before claude first starts", () => {
     fs.mkdirSync(sb.store, { recursive: true });
     fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { deny: ["Bash(git push *)"] }, env: { A: "1" } }));

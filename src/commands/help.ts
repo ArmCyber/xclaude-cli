@@ -30,8 +30,8 @@ commands, plugins…) are shared by every account, so \`xclaude other -c\`
 continues the last conversation in this folder, whichever account it ran on.
 Each account also takes what ~/.claude/settings.json sets (rules, hooks, auto
 mode…) at every launch, keeping its own changes; set <name> --inherit off
-stops that. Plugins are turned on per account: one installed under another
-login shows in /plugin, turned off.
+stops that. A plugin installed under another login shows in /plugin, on when
+~/.claude has it on, otherwise off.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -129,7 +129,7 @@ wrong.
 
   --fix    repair links, merge left-behind directories, fix CLAUDE.md stubs,
            merge ~/.claude/settings.json into the accounts that take it,
-           list plugins installed under other logins (turned off)
+           list plugins installed under other logins
 `,
   help: `Usage: xclaude help [command]
 `,

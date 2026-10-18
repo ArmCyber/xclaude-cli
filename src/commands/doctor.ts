@@ -17,7 +17,7 @@ import { identityEnv } from "../launch/env.ts";
 import { inheritable, inheritSettings, inheritStatus, mainSettings } from "../link/inherit.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { strayFolders } from "../link/leftover.ts";
-import { listPlugins, planPlugins } from "../link/plugins.ts";
+import { listPlugins, mainPlugins, planPlugins } from "../link/plugins.ts";
 import { describeProblems, inspectAccount, repairAccount } from "../link/repair.ts";
 import { SHARED_DIRS, shareTable } from "../link/table.ts";
 import { storeUnknownEntries, unknownEntries } from "../link/unknown.ts";
@@ -150,7 +150,7 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
       if (inherits(config, name)) inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
     }
     if (table.dirs.includes("plugins")) {
-      for (const name of Object.keys(config.accounts)) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
+      for (const name of Object.keys(config.accounts)) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log, follow: inherits(config, name) });
     }
   }
 
@@ -193,7 +193,8 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
   if (configProblem) report.add("info", "not checked: fix the config first (account dirs are left alone)");
   else if (!names.length) report.add("info", "no accounts yet; add one with: xclaude add <name>");
   const storeDev = statOrNull(ctx.paths.store)?.dev;
-  const listed = loadState(ctx.paths).listedPlugins;
+  const pluginState = loadState(ctx.paths);
+  const mainOn = mainPlugins(ctx.paths);
   const fromMain = mainSettings(ctx.paths);
   // Nothing to say about the merge while ~/.claude/settings.json has nothing to give.
   const shared = "settings" in fromMain && Object.keys(inheritable(fromMain.settings)).length ? fromMain.settings : null;
@@ -232,9 +233,18 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
             report.add("ok", `takes ~/.claude/settings.json${status.own.length ? `, keeping its own ${status.own.join(", ")}` : ""}`, 2);
           }
         }
-        const plugins = table.dirs.includes("plugins") ? planPlugins(ctx.paths, name, listed[name] ?? [])?.add : undefined;
-        if (plugins?.length) {
-          report.add("info", `not in its /plugin yet, installed under another login: ${plugins.join(", ")} (the next launch, or --fix, lists ${plugins.length === 1 ? "it" : "them"} there, turned off)`, 2);
+        const tracked = { off: pluginState.listedPlugins[name] ?? [], on: pluginState.turnedOnPlugins[name] ?? [] };
+        const plan = table.dirs.includes("plugins") ? planPlugins(ctx.paths, name, tracked, inherits(config, name) ? mainOn : null) : null;
+        const them = (ids: string[]) => (ids.length === 1 ? "it" : "them");
+        const plugins = plan ? plan.add.filter((id) => !plan.turnOn.includes(id)) : [];
+        if (plugins.length) {
+          report.add("info", `not in its /plugin yet, installed under another login: ${plugins.join(", ")} (the next launch, or --fix, lists ${them(plugins)} there, turned off)`, 2);
+        }
+        if (plan?.turnOn.length) {
+          report.add("info", `on in ~/.claude but not here yet: ${plan.turnOn.join(", ")} (the next launch, or --fix, turns ${them(plan.turnOn)} on)`, 2);
+        }
+        if (plan?.turnOff.length) {
+          report.add("info", `off in ~/.claude but still on here: ${plan.turnOff.join(", ")} (the next launch, or --fix, turns ${them(plan.turnOff)} off)`, 2);
         }
         const dev = statOrNull(dir)?.dev;
         if (storeDev !== undefined && dev !== undefined && dev !== storeDev) {

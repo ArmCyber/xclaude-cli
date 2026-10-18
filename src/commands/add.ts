@@ -46,7 +46,7 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
   });
   for (const pr of res.problems) log(`xclaude: ${problemLine(name, pr)}`);
   inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
-  if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
+  if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log, follow: true });
   // Reload: another xclaude may have changed the config while this one waited for the repair.
   config = loadConfig(ctx.paths, { create: false }).config;
   config.accounts[name] = defaults;

@@ -10,13 +10,15 @@ export interface State {
   seenUnknownEntries: Record<string, string[]>;
   /** Per account, the plugins xclaude added to its settings.json as off (link/plugins.ts). */
   listedPlugins: Record<string, string[]>;
+  /** Per account, the plugins xclaude turned on in its settings.json because ~/.claude has them on. */
+  turnedOnPlugins: Record<string, string[]>;
 }
 
 /** lastAccountByDir keeps the most recently used directories only. */
 const MAX_DIRS = 500;
 
 export function emptyState(): State {
-  return { installedVersion: null, lastAccountByDir: {}, lastUsedAccount: null, seenUnknownEntries: {}, listedPlugins: {} };
+  return { installedVersion: null, lastAccountByDir: {}, lastUsedAccount: null, seenUnknownEntries: {}, listedPlugins: {}, turnedOnPlugins: {} };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -44,9 +46,11 @@ export function loadState(paths: Paths): State {
       if (Array.isArray(entries)) state.seenUnknownEntries[name] = entries.filter((e) => typeof e === "string");
     }
   }
-  if (isRecord(raw.listedPlugins)) {
-    for (const [name, ids] of Object.entries(raw.listedPlugins)) {
-      if (Array.isArray(ids)) state.listedPlugins[name] = ids.filter((id) => typeof id === "string");
+  for (const key of ["listedPlugins", "turnedOnPlugins"] as const) {
+    const lists = raw[key];
+    if (!isRecord(lists)) continue;
+    for (const [name, ids] of Object.entries(lists)) {
+      if (Array.isArray(ids)) state[key][name] = ids.filter((id) => typeof id === "string");
     }
   }
   return state;
@@ -82,4 +86,5 @@ export function forgetAccount(state: State, account: string): void {
   if (state.lastUsedAccount === account) state.lastUsedAccount = null;
   delete state.seenUnknownEntries[account];
   delete state.listedPlugins[account];
+  delete state.turnedOnPlugins[account];
 }

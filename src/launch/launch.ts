@@ -69,7 +69,9 @@ function repairForLaunch(ctx: Ctx, config: Config, account: string, log: (line: 
   }
   // A busy store lock already cost this launch its wait; the next launch catches up.
   if (inherits(config, account) && !res.busy) inheritSettings(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
-  if (table.dirs.includes("plugins") && !res.busy) listPlugins(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
+  if (table.dirs.includes("plugins") && !res.busy) {
+    listPlugins(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log, follow: inherits(config, account) });
+  }
   return unknownEntries(res.names, table);
 }
 
