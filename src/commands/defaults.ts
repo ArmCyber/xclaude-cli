@@ -23,12 +23,13 @@ export function applyDefaultOptions(p: Parsed, home: string, into: Defaults): vo
   if (args !== undefined) into.args = splitShellWords(args, home);
 }
 
-/** Two-column listing of an identity's defaults. */
-export function formatDefaults(d: Defaults): string {
+/** Two-column listing of an identity's defaults; an account's also says whether it takes ~/.claude's settings. */
+export function formatDefaults(d: Defaults, account = false): string {
   return [
     `  model   ${d.model ?? DASH}`,
     `  effort  ${d.effort ?? DASH}`,
     `  args    ${d.args.length ? quoteShellWords(d.args) : DASH}`,
+    ...(account ? [`  inherit ${d.inherit === false ? "off" : "on"}`] : []),
   ]
     .map((l) => `${l}\n`)
     .join("");

@@ -11,6 +11,7 @@ import { forgetAccount, updateState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { unknownAccount } from "../grammar.ts";
 import { identityEnv } from "../launch/env.ts";
+import { forgetInherit } from "../link/inherit.ts";
 import { type Folder, keepOnlyLinks, leftoverNames, strayFolders } from "../link/leftover.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { problemLine, repairAccount } from "../link/repair.ts";
@@ -102,12 +103,13 @@ export async function rmCommand(ctx: Ctx, config: Config, args: string[], listSe
   return EXIT_OK;
 }
 
-/** Drops an account from the config (reloaded: another xclaude may have changed it meanwhile) and the state. */
+/** Drops an account from the config (reloaded: another xclaude may have changed it meanwhile), the state and its merge base. */
 function forget(ctx: Ctx, name: string): void {
   const fresh = loadConfig(ctx.paths, { create: false }).config;
   delete fresh.accounts[name];
   saveConfig(ctx.paths, fresh);
   updateState(ctx.paths, (s) => forgetAccount(s, name));
+  forgetInherit(ctx.paths, name);
 }
 
 /** Why a folder in accounts/ isn't deleted. */

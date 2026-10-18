@@ -83,6 +83,24 @@ describe("doctor", () => {
     assert.doesNotMatch(doctor().stdout, /not in its \/plugin yet/);
   });
 
+  it("reports what ~/.claude/settings.json changed that an account hasn't taken yet, and --fix takes it", () => {
+    const settings = path.join(accDir("acme"), "settings.json");
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, theme: "dark" }));
+    fs.writeFileSync(settings, JSON.stringify({ theme: "light" }));
+    let res = doctor();
+    assert.equal(res.status, 0, res.stdout);
+    assert.match(res.stdout, /· ~\/\.claude\/settings\.json changes not taken yet: permissions \(the next launch, or --fix, takes them\)/);
+    res = doctor(["--fix"]);
+    assert.match(res.stderr, /acme takes ~\/\.claude\/settings\.json now \(permissions\)/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(settings, "utf8")), { theme: "light", permissions: { allow: ["Read"] } });
+    assert.match(doctor().stdout, /✓ takes ~\/\.claude\/settings\.json, keeping its own theme/);
+
+    sb.run(["set", "acme", "--inherit", "off"]);
+    assert.match(doctor().stdout, /· doesn't take ~\/\.claude\/settings\.json \(turn that on with: xclaude set acme --inherit on\)/);
+    fs.writeFileSync(path.join(sb.store, "settings.json"), "{half");
+    assert.match(doctor().stdout, /! ~\/\.claude\/settings\.json isn't valid JSON, so the accounts can't take it/);
+  });
+
   it("reports a missing account dir, and --fix recreates it", () => {
     fs.rmSync(accDir("acme"), { recursive: true });
     assert.match(doctor().stdout, /✗ ~\/\.xclaude\/accounts\/acme is missing; the next launch \(or --fix\) recreates it/);

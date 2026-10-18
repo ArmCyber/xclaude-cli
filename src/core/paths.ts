@@ -17,6 +17,8 @@ export interface Paths {
   cache: string;
   shell: string;
   locks: string;
+  /** What each account last took from ~/.claude (link/inherit.ts). */
+  inherit: string;
   accounts: string;
 }
 
@@ -34,6 +36,7 @@ export function resolvePaths(env: Env): Paths {
     cache: path.join(xhome, "cache"),
     shell: path.join(xhome, "shell"),
     locks: path.join(xhome, "locks"),
+    inherit: path.join(xhome, "inherit"),
     accounts: path.join(xhome, "accounts"),
   };
 }

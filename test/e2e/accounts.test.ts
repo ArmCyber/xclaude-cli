@@ -41,6 +41,15 @@ describe("add", () => {
     assert.ok(res.stderr.indexOf("foo@m is installed under another login") < res.stderr.indexOf("Starting Claude Code in it"));
   });
 
+  it("merges ~/.claude/settings.json into the new account before claude first starts", () => {
+    fs.mkdirSync(sb.store, { recursive: true });
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { deny: ["Bash(git push *)"] }, env: { A: "1" } }));
+    const res = sb.run(["add", "acme"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(accDir("acme"), "settings.json"), "utf8")), { permissions: { deny: ["Bash(git push *)"] } });
+    assert.ok(res.stderr.indexOf("acme takes ~/.claude/settings.json now (permissions)") < res.stderr.indexOf("Starting Claude Code in it"));
+  });
+
   it("explains how to log in later", () => {
     const res = sb.run(["add", "acme"]);
     assert.equal(res.status, 0);
@@ -85,12 +94,43 @@ describe("set", () => {
 
   it("prints and edits the defaults", () => {
     let res = sb.run(["set", "acme"]);
-    assert.equal(res.stdout, "acme\n  model   –\n  effort  –\n  args    –\n");
+    assert.equal(res.stdout, "acme\n  model   –\n  effort  –\n  args    –\n  inherit on\n");
     res = sb.run(["set", "acme", "--model", "opus", "--effort", "xhigh", "--args", "--chrome --add-dir '/a b'"]);
-    assert.equal(res.stdout, "acme\n  model   opus\n  effort  xhigh\n  args    --chrome --add-dir '/a b'\n");
+    assert.equal(res.stdout, "acme\n  model   opus\n  effort  xhigh\n  args    --chrome --add-dir '/a b'\n  inherit on\n");
     assert.deepEqual(config().accounts.acme, { model: "opus", effort: "xhigh", args: ["--chrome", "--add-dir", "/a b"] });
     sb.run(["set", "acme", "--unset", "model", "--unset=args"]);
     assert.deepEqual(config().accounts.acme, { model: null, effort: "xhigh", args: [] });
+  });
+
+  it("turns taking ~/.claude/settings.json off, on and back from scratch", () => {
+    const settings = path.join(accDir("acme"), "settings.json");
+    const read = () => JSON.parse(fs.readFileSync(settings, "utf8"));
+    fs.writeFileSync(path.join(sb.store, "settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, theme: "dark" }));
+    sb.run(["acme", "-p", "hi"]);
+    assert.deepEqual(read(), { permissions: { allow: ["Read"] }, theme: "dark" });
+    fs.writeFileSync(settings, JSON.stringify({ ...read(), theme: "light" }));
+
+    let res = sb.run(["set", "acme", "--inherit", "off"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /inherit off/);
+    assert.equal(config().accounts.acme.inherit, false);
+    assert.deepEqual(read(), { theme: "light" }, "what acme changed stays");
+    assert.match(res.stderr, /took back what acme had from ~\/\.claude\/settings\.json: permissions/);
+    sb.run(["acme", "-p", "hi"]);
+    assert.deepEqual(read(), { theme: "light" }, "a launch no longer merges");
+
+    res = sb.run(["set", "acme", "--inherit=on"]);
+    assert.equal(config().accounts.acme.inherit, undefined);
+    assert.deepEqual(read(), { theme: "light", permissions: { allow: ["Read"] } });
+    fs.writeFileSync(settings, JSON.stringify({ theme: "light" }));
+    sb.run(["acme", "-p", "hi"]);
+    assert.deepEqual(read(), { theme: "light" }, "a deletion in the account stays");
+    sb.run(["set", "acme", "--inherit", "reset"]);
+    assert.deepEqual(read(), { theme: "light", permissions: { allow: ["Read"] } });
+
+    assert.match(sb.run(["set", "acme", "--inherit", "maybe"]).stderr, /--inherit takes on, off or reset/);
+    sb.run(["set", "main", "--enable"]);
+    assert.match(sb.run(["set", "main", "--inherit", "off"]).stderr, /--inherit is for accounts/);
   });
 
   it("turns the main identity on and off", () => {

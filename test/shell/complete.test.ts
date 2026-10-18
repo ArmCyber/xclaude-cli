@@ -107,8 +107,9 @@ describe("completion contexts", () => {
 
   it("completes xclaude's own commands", () => {
     assert.deepEqual(values(["xclaude", "set", ""]).values, ["acme", "beta", "main"]);
-    assert.deepEqual(values(["xclaude", "set", "acme", "--"]).values, ["--model", "--effort", "--args", "--unset", "--enable", "--disable"]);
+    assert.deepEqual(values(["xclaude", "set", "acme", "--"]).values, ["--model", "--effort", "--args", "--unset", "--inherit", "--enable", "--disable"]);
     assert.deepEqual(values(["xclaude", "set", "acme", "--unset", ""]).values, ["model", "effort", "args"]);
+    assert.deepEqual(values(["xclaude", "set", "acme", "--inherit", ""]).values, ["on", "off", "reset"]);
     assert.deepEqual(values(["xclaude", "set", "acme", "--effort=m"]).values, ["--effort=medium", "--effort=max"]);
     assert.deepEqual(values(["xclaude", "set", "acme", ""]).values, [], "one account only");
     assert.deepEqual(values(["xclaude", "rm", ""]).values, ["acme", "beta"]);

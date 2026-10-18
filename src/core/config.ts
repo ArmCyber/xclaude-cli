@@ -20,6 +20,8 @@ export interface Defaults {
   model: string | null;
   effort: Effort | null;
   args: string[];
+  /** Accounts only: false stops taking ~/.claude's settings and MCP servers (link/inherit.ts). Absent means on. */
+  inherit?: boolean;
 }
 
 export interface MainConfig extends Defaults {
@@ -90,6 +92,7 @@ const isEffortOrNull = (v: unknown): v is Effort | null => v === null || (typeof
 
 function parseDefaults(raw: unknown, where: string): Defaults & Json {
   if (!isObject(raw)) throw new ConfigProblem(`${where.replace(/\.$/, "")} must be an object`);
+  field(raw, "inherit", where, true, isBool, "true or false");
   return {
     ...raw,
     model: field(raw, "model", where, null, isStringOrNull, "a model name or null"),
@@ -195,6 +198,11 @@ export function identities(config: Config): string[] {
   const names = Object.keys(config.accounts);
   if (config.main.enabled) names.push(MAIN);
   return names;
+}
+
+/** Whether an account takes ~/.claude's settings and MCP servers; never the main identity, which is ~/.claude. */
+export function inherits(config: Config, name: string): boolean {
+  return name !== MAIN && Object.hasOwn(config.accounts, name) && config.accounts[name]!.inherit !== false;
 }
 
 /** An identity's defaults, or null if it doesn't exist or is disabled. */

@@ -6,7 +6,7 @@
 // entry back out once the plugin is uninstalled, if it's still off.
 import fs from "node:fs";
 import path from "node:path";
-import { lstatOrNull, readFileOrNull, writeFileAtomic } from "../core/fsutil.ts";
+import { type FileStamp, lstatOrNull, readFileOrNull, stampOf, writeIfUnchanged } from "../core/fsutil.ts";
 import { DirLock, STORE_LOCK } from "../core/lock.ts";
 import { accountDir, type Paths, realpathOrNull } from "../core/paths.ts";
 import { loadState, updateState } from "../core/state.ts";
@@ -54,7 +54,7 @@ export interface PluginPlan {
   /** The new settings.json, or null when it stays as it is. */
   text: string | null;
   /** The file as read (null: missing); a different one at write time means Claude Code wrote it. */
-  seen: { mtimeMs: number; size: number; ino: number } | null;
+  seen: FileStamp | null;
 }
 
 /**
@@ -110,7 +110,7 @@ export function planPlugins(paths: Paths, account: string, tracked: readonly str
     drop,
     tracked: [...keep, ...add].sort(),
     text,
-    seen: st ? { mtimeMs: st.mtimeMs, size: st.size, ino: st.ino } : null,
+    seen: stampOf(st),
   };
 }
 
@@ -119,13 +119,7 @@ export function planPlugins(paths: Paths, account: string, tracked: readonly str
  * nothing written, when Claude Code wrote the file after it was read.
  */
 export function writePlan(plan: PluginPlan): boolean {
-  if (plan.text === null) return true;
-  const st = lstatOrNull(plan.file);
-  const unchanged = plan.seen
-    ? st !== null && st.mtimeMs === plan.seen.mtimeMs && st.size === plan.seen.size && st.ino === plan.seen.ino
-    : st === null;
-  if (unchanged) writeFileAtomic(plan.file, plan.text);
-  return unchanged;
+  return plan.text === null || writeIfUnchanged(plan.file, plan.text, plan.seen);
 }
 
 function changesNothing(plan: PluginPlan, tracked: readonly string[]): boolean {

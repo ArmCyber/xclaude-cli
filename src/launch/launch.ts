@@ -1,12 +1,13 @@
 // The launch pipeline: `xclaude <account> [args…]`.
 import { loadHelp } from "../claude/help.ts";
 import { findClaude } from "../claude/resolve.ts";
-import { type Config, defaultsOf, describeDefaults, identities, MAIN } from "../core/config.ts";
+import { type Config, defaultsOf, describeDefaults, identities, inherits, MAIN } from "../core/config.ts";
 import { UsageError, XError } from "../core/errors.ts";
 import { accountDir, tildify } from "../core/paths.ts";
 import { loadState, recordUse, updateState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { unknownAccount } from "../grammar.ts";
+import { inheritSettings } from "../link/inherit.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { listPlugins } from "../link/plugins.ts";
 import { LAUNCH_LOCK_WAIT_MS, problemLine, repairAccount } from "../link/repair.ts";
@@ -66,7 +67,8 @@ function repairForLaunch(ctx: Ctx, config: Config, account: string, log: (line: 
   if (ctx.switches.normalizePaths && table.dirs.includes("plugins")) {
     normalizePaths(ctx.paths, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
   }
-  // A busy store lock already cost this launch its wait; the next launch lists them.
+  // A busy store lock already cost this launch its wait; the next launch catches up.
+  if (inherits(config, account) && !res.busy) inheritSettings(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
   if (table.dirs.includes("plugins") && !res.busy) listPlugins(ctx.paths, account, { lockWaitMs: LAUNCH_LOCK_WAIT_MS, log });
   return unknownEntries(res.names, table);
 }

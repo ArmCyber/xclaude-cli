@@ -8,6 +8,7 @@ import {
   defaultsOf,
   describeDefaults,
   identities,
+  inherits,
   loadConfig,
   parseConfig,
   saveConfig,
@@ -69,6 +70,7 @@ describe("parseConfig", () => {
     assert.throws(() => parse({ accounts: { main: {} } }), /reserved for the main identity/);
     assert.throws(() => parse({ accounts: { acme: { effort: "extreme" } } }), /accounts\.acme\.effort must be one of low, medium, high, xhigh, max, ultracode/);
     assert.throws(() => parse({ accounts: { acme: { args: "--chrome" } } }), /accounts\.acme\.args must be a list of strings/);
+    assert.throws(() => parse({ accounts: { acme: { inherit: "no" } } }), /accounts\.acme\.inherit must be true or false/);
     assert.throws(() => parse({ guard: "yes" }), /guard must be true or false/);
     assert.throws(() => parse({ version: 2 }), /version 2 isn't supported/);
     assert.throws(() => parse({ share: { add: ["a/b"] } }), /isn't an entry name/);
@@ -136,6 +138,17 @@ describe("identities and defaults", () => {
     assert.deepEqual(identities(c), ["b", "a", "main"]);
     assert.equal(defaultsOf(c, "main"), c.main);
     assert.equal(defaultsOf(c, "constructor"), null);
+  });
+
+  it("takes ~/.claude's settings in every account unless it's turned off, never in main", () => {
+    const c = defaultConfig();
+    c.accounts.a = { model: null, effort: null, args: [] };
+    c.accounts.b = { model: null, effort: null, args: [], inherit: false };
+    c.main.enabled = true;
+    assert.equal(inherits(c, "a"), true);
+    assert.equal(inherits(c, "b"), false);
+    assert.equal(inherits(c, "main"), false);
+    assert.equal(inherits(c, "missing"), false);
   });
 
   it("describes defaults", () => {

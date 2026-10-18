@@ -208,7 +208,7 @@ class Completer {
         return this.own(
           rest,
           cur,
-          { "--model": "model", "--effort": "effort", "--args": "text", "--unset": "unset", "--enable": null, "--disable": null },
+          { "--model": "model", "--effort": "effort", "--args": "text", "--unset": "unset", "--inherit": "inherit", "--enable": null, "--disable": null },
           1,
           () => [...Object.keys(this.config.accounts), MAIN],
         );
@@ -233,7 +233,7 @@ class Completer {
   own(
     rest: string[],
     cur: string,
-    flags: Record<string, "model" | "effort" | "unset" | "text" | null>,
+    flags: Record<string, "model" | "effort" | "unset" | "inherit" | "text" | null>,
     max: number,
     positional: () => string[],
     describe: (name: string) => string | undefined = (n) => (n === MAIN || this.config.accounts[n] ? this.describeIdentity(n) : undefined),
@@ -254,8 +254,9 @@ class Completer {
     return words(positional(), describe);
   }
 
-  ownValues(kind: "model" | "effort" | "unset" | "text" | null, prefix: string): Completion {
-    const values = kind === "model" ? MODEL_ALIASES : kind === "effort" ? EFFORTS : kind === "unset" ? ["model", "effort", "args"] : [];
+  ownValues(kind: "model" | "effort" | "unset" | "inherit" | "text" | null, prefix: string): Completion {
+    const values =
+      kind === "model" ? MODEL_ALIASES : kind === "effort" ? EFFORTS : kind === "unset" ? ["model", "effort", "args"] : kind === "inherit" ? ["on", "off", "reset"] : [];
     return words(values.map((v) => `${prefix}${v}`));
   }
 

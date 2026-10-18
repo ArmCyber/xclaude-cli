@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { type AuthStatus, authStatus, describeLogin } from "../claude/auth.ts";
 import { findClaude, INSTALL_HINT } from "../claude/resolve.ts";
-import { type Config, defaultConfig, identities, loadConfig, MAIN } from "../core/config.ts";
+import { type Config, defaultConfig, identities, inherits, loadConfig, MAIN } from "../core/config.ts";
 import { EXIT_ERROR, EXIT_OK, UsageError, XError } from "../core/errors.ts";
 import { lstatOrNull, readFileOrNull, statOrNull } from "../core/fsutil.ts";
 import { parseOptions } from "../core/options.ts";
@@ -14,6 +14,7 @@ import { accountDir, tildify } from "../core/paths.ts";
 import { loadState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
+import { inheritable, inheritSettings, inheritStatus, mainSettings } from "../link/inherit.ts";
 import { normalizePaths } from "../link/normalize.ts";
 import { strayFolders } from "../link/leftover.ts";
 import { listPlugins, planPlugins } from "../link/plugins.ts";
@@ -145,6 +146,9 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
       repairAccount({ paths: ctx.paths, account: name, table, lockWaitMs: Infinity, replaceWrongLinks: true, log });
     }
     if (ctx.switches.normalizePaths && table.dirs.includes("plugins")) normalizePaths(ctx.paths, { lockWaitMs: Infinity, log });
+    for (const name of Object.keys(config.accounts)) {
+      if (inherits(config, name)) inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
+    }
     if (table.dirs.includes("plugins")) {
       for (const name of Object.keys(config.accounts)) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
     }
@@ -190,6 +194,9 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
   else if (!names.length) report.add("info", "no accounts yet; add one with: xclaude add <name>");
   const storeDev = statOrNull(ctx.paths.store)?.dev;
   const listed = loadState(ctx.paths).listedPlugins;
+  const fromMain = mainSettings(ctx.paths);
+  // Nothing to say about the merge while ~/.claude/settings.json has nothing to give.
+  const shared = "settings" in fromMain && Object.keys(inheritable(fromMain.settings)).length ? fromMain.settings : null;
   for (const name of names) {
     const login = logins.get(name);
     report.lines.push(`  ${name}${login ? `  ${describeLogin(login)}` : ""}`);
@@ -214,6 +221,17 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
         }
         const unknown = unknownEntries(insp.names, table);
         if (unknown.length) report.add("info", `per-account entries xclaude doesn't know: ${unknown.join(", ")}`, 2);
+        if (shared && !inherits(config, name)) {
+          report.add("info", `doesn't take ~/.claude/settings.json (turn that on with: xclaude set ${name} --inherit on)`, 2);
+        } else if (shared) {
+          const status = inheritStatus(ctx.paths, name, shared);
+          if (!status) report.add("warn", "its settings.json is a link or isn't a valid JSON object, so ~/.claude/settings.json isn't merged into it", 2);
+          else if (status.pending.length) {
+            report.add("info", `~/.claude/settings.json changes not taken yet: ${status.pending.join(", ")} (the next launch, or --fix, takes them)`, 2);
+          } else {
+            report.add("ok", `takes ~/.claude/settings.json${status.own.length ? `, keeping its own ${status.own.join(", ")}` : ""}`, 2);
+          }
+        }
         const plugins = table.dirs.includes("plugins") ? planPlugins(ctx.paths, name, listed[name] ?? [])?.add : undefined;
         if (plugins?.length) {
           report.add("info", `not in its /plugin yet, installed under another login: ${plugins.join(", ")} (the next launch, or --fix, lists ${plugins.length === 1 ? "it" : "them"} there, turned off)`, 2);
@@ -267,6 +285,7 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
   if (!fs.existsSync(ctx.paths.store)) report.add("info", `${t(ctx.paths.store)} doesn't exist yet`);
   else if (storeUnknown.length) report.add("info", `entries in ${t(ctx.paths.store)} that no account links to: ${storeUnknown.join(", ")}`);
   else report.add("ok", t(ctx.paths.store));
+  if ("problem" in fromMain) report.add("warn", `${fromMain.problem}, so the accounts can't take it`);
   const mainDays = remoteCleanupDays(ctx.paths.store);
   if (mainDays !== null && mainDays < 30) {
     report.add("warn", `the ~/.claude login's organization sets cleanupPeriodDays to ${mainDays}: plain claude deletes everyone's shared transcripts older than ${mainDays} days`);

@@ -4,7 +4,7 @@
 
 ## Where things are written down
 
-- **Architecture (the reference):** [docs/architecture.md](docs/architecture.md), with the facts about Claude Code (F1–F25) it rests on. A change to behavior updates it in the same commit, along with the README and `xclaude help` where they're affected.
+- **Architecture (the reference):** [docs/architecture.md](docs/architecture.md), with the facts about Claude Code (F1–F27) it rests on. A change to behavior updates it in the same commit, along with the README and `xclaude help` where they're affected.
 - **Spike suite:** [spikes/](spikes/README.md) checks xclaude against the real Claude Code; run logs go to `spikes/results/` (not committed).
 
 ## Commands
@@ -32,7 +32,8 @@ src/core/           paths, config, state, fsutil (atomic write, no-clobber move,
                     lock (mkdir locks), sleep, options, shellwords, format, prompt, io, errors
 src/link/           table (share table), repair (per-entry states and actions), merge (link-first
                     directory merge), history (history merge), stub, unknown, normalize,
-                    plugins (other logins' plugins, listed as off), leftover (what rm keeps
+                    inherit (~/.claude/settings.json merged into each account), plugins
+                    (other logins' plugins, listed as off), leftover (what rm keeps
                     of a removed account)
 src/claude/         resolve (find claude), help (parse and cache --help), auth (auth status, runClaude)
 src/launch/         launch pipeline, args, env, exec (execve, spawn fallback, runChild), picker
@@ -89,7 +90,7 @@ git push --follow-tags                # the commit and its tag, after a successf
 1. Deletion never follows links, and content is never moved with `rename` onto an existing path. (One narrow exception, `docs/architecture.md` §5: a merge gives a name it created itself to the account's newer version of that file, after keeping the older one as a conflict copy.) Nothing is ever read or emptied through a link.
 2. An account's `CLAUDE_CONFIG_DIR` is the exact `path.join` string, never passed through `realpath`.
 3. Links point at the real path of the store entry, so no link points at another link.
-4. Credentials, `.claude.json`, `settings.json`, `jobs` and `daemon` are never shared.
+4. Credentials, `.claude.json`, `settings.json`, `jobs` and `daemon` are never shared (linked). `settings.json` takes what `~/.claude/settings.json` sets through the three-way merge (`docs/architecture.md` §8), never the other way.
 5. Zero runtime dependencies, Node ≥ 22.15, and macOS and Linux only.
 6. Generated bash code runs on bash 3.2.
 7. Tests and spikes never write to the owner's real environment: `~/.claude`, `~/.xclaude`, rc files, the tmux server, the global npm prefix, the Chrome manifest or the Keychain. The only exceptions are spikes 7 and 11, which use the real home after a backup, and any spike run on macOS, whose test logins live in the login keychain until the run removes them (it asks first).

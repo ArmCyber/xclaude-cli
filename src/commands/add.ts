@@ -9,6 +9,7 @@ import { accountDir, mkdirPrivate, tildify } from "../core/paths.ts";
 import type { Ctx } from "../ctx.ts";
 import { identityEnv } from "../launch/env.ts";
 import { runChild } from "../launch/exec.ts";
+import { inheritSettings } from "../link/inherit.ts";
 import { listPlugins } from "../link/plugins.ts";
 import { problemLine, repairAccount, unmanageable } from "../link/repair.ts";
 import { shareTable } from "../link/table.ts";
@@ -44,6 +45,7 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
     log,
   });
   for (const pr of res.problems) log(`xclaude: ${problemLine(name, pr)}`);
+  inheritSettings(ctx.paths, name, { lockWaitMs: Infinity, log });
   if (table.dirs.includes("plugins")) listPlugins(ctx.paths, name, { lockWaitMs: Infinity, log });
   // Reload: another xclaude may have changed the config while this one waited for the repair.
   config = loadConfig(ctx.paths, { create: false }).config;

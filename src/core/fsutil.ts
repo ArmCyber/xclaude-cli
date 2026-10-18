@@ -87,6 +87,28 @@ export function writeFileAtomic(path_: string, data: string | Buffer, opts: { mo
   }
 }
 
+/** A file as read; a different one at write time means someone wrote it in between. */
+export interface FileStamp {
+  mtimeMs: number;
+  size: number;
+  ino: number;
+}
+
+export function stampOf(st: fs.Stats | null): FileStamp | null {
+  return st ? { mtimeMs: st.mtimeMs, size: st.size, ino: st.ino } : null;
+}
+
+/**
+ * Writes `text` atomically unless the file changed after `seen` was taken (null:
+ * it didn't exist then). False, with nothing written, when it changed.
+ */
+export function writeIfUnchanged(file: string, text: string, seen: FileStamp | null): boolean {
+  const st = lstatOrNull(file);
+  const unchanged = seen ? st !== null && st.mtimeMs === seen.mtimeMs && st.size === seen.size && st.ino === seen.ino : st === null;
+  if (unchanged) writeFileAtomic(file, text);
+  return unchanged;
+}
+
 /**
  * Removes a file, link or directory tree without ever following links: a link is
  * removed itself, and whatever it points at is left alone.

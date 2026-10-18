@@ -28,8 +28,10 @@ Commands:
 Conversations, prompt history, memory and personal content (skills, agents,
 commands, plugins…) are shared by every account, so \`xclaude other -c\`
 continues the last conversation in this folder, whichever account it ran on.
-Plugins are turned on per account: one installed under another login shows
-in /plugin, turned off.
+Each account also takes what ~/.claude/settings.json sets (rules, hooks, auto
+mode…) at every launch, keeping its own changes; set <name> --inherit off
+stops that. Plugins are turned on per account: one installed under another
+login shows in /plugin, turned off.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -66,7 +68,7 @@ defaults, and each one's config dir (the CLAUDE_CONFIG_DIR to use elsewhere,
 e.g. in an editor's environment settings).
 `,
   set: `Usage: xclaude set <name> [--model M] [--effort E] [--args "…"]
-                   [--unset model|effort|args]
+                   [--unset model|effort|args] [--inherit on|off|reset]
        xclaude set main --enable|--disable
 
 Changes an account's launch defaults; with no options, prints them.
@@ -76,6 +78,11 @@ Arguments typed at launch always win over these defaults.
   --effort E     default effort: low, medium, high, xhigh, max or ultracode
   --args "…"     extra Claude Code arguments, split like a shell line
   --unset KEY    clear model, effort or args
+  --inherit on|off|reset
+                 on (the default): take what ~/.claude/settings.json sets at
+                 every launch, except login-bound settings such as env; the
+                 account's own changes stay. off: stop, and take back what it
+                 took and hasn't changed since. reset: take everything again.
   --enable       (main only) use the login in ~/.claude as the account "main"
   --disable      (main only) turn it off again
 `,
@@ -121,6 +128,7 @@ machine-managed settings and the environment. Exits non-zero if something is
 wrong.
 
   --fix    repair links, merge left-behind directories, fix CLAUDE.md stubs,
+           merge ~/.claude/settings.json into the accounts that take it,
            list plugins installed under other logins (turned off)
 `,
   help: `Usage: xclaude help [command]

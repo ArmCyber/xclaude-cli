@@ -30,7 +30,7 @@ Update with `npm i -g xclaude-cli@latest`; xclaude checks npm once a day and pri
 | `xclaude <account> [claude args…]` | Claude Code as that account; every argument goes to `claude` |
 | `xclaude [claude flags…]` | the same, after picking the account (↑/↓, 1–9, Enter; Esc cancels) |
 | `xclaude add <name> [--model M] [--effort E] [--args "…"]` | add an account, then log in with `/login` |
-| `xclaude set <name> [--model M] [--effort E] [--args "…"] [--unset model\|effort\|args]` | change an account's defaults; with no options, show them |
+| `xclaude set <name> [--model M] [--effort E] [--args "…"] [--unset model\|effort\|args] [--inherit on\|off\|reset]` | change an account's defaults; with no options, show them. `--inherit off` stops it taking `~/.claude/settings.json` |
 | `xclaude set main --enable\|--disable` | use the login in `~/.claude` (plain `claude`'s) as the account `main` |
 | `xclaude ls` | accounts with their login, defaults and config dir |
 | `xclaude rm <name> [--keep-login] [-y]` | remove an account and log it out; its folder keeps only its links, so its old conversations still open their saved long outputs. Run it on the name again to delete that folder (only while it holds nothing but links) |
@@ -66,7 +66,8 @@ xclaude's options (`--dir`, `--detach`, `--empty`) come right after the label, a
 ## What's shared
 
 - **Shared by all accounts:** conversations and their checkpoints (`projects`, `file-history`), prompt history, task lists, plans, running-session info, personal skills, agents, commands, rules, output styles, hooks and plugins, and `~/.claude/CLAUDE.md`.
-- **Per account:** the login, `.claude.json` (MCP servers, folder trust), `settings.json` (so plugins, hooks and the statusline are enabled per account), keybindings, background sessions and caches. A plugin installed under another login shows in an account's `/plugin`, turned off, from its next launch; turn it on there. Uninstalling a plugin removes it for every login. For the `~/.claude` login, turn on a plugin an account installed with `claude plugin enable <plugin>`.
+- **Per account:** the login, `.claude.json` (MCP servers, folder trust), `settings.json` (so plugins and the statusline can differ per account), keybindings, background sessions and caches.
+- **Taken from `~/.claude/settings.json`:** at every launch, each account's `settings.json` takes what changed in `~/.claude/settings.json` since its last launch: permission rules, hooks, auto mode, and the rest, apart from login-bound settings (`env`, `apiKeyHelper` and the other credential helpers, `forceLoginMethod`, `forceLoginOrgUUID`) and `enabledPlugins`. What the account changed itself stays, so a rule it added or removed stays that way, and one you remove from `~/.claude/settings.json` goes from the accounts too. `~/.claude/settings.json` itself is never written. `xclaude set <name> --inherit off` stops it and takes back what the account took and hasn't changed; `--inherit reset` takes everything again. A plugin installed under another login shows in an account's `/plugin`, turned off, from its next launch; turn it on there. Uninstalling a plugin removes it for every login. For the `~/.claude` login, turn on a plugin an account installed with `claude plugin enable <plugin>`.
 
 Sharing works by linking each account's directories into `~/.claude`, which plain `claude` keeps using as before. Don't open the same conversation in two terminals at once. Scripts can read `XCLAUDE_ACCOUNT` to show the account, for example in a statusline.
 
