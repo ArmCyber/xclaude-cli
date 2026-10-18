@@ -66,7 +66,7 @@ export const PER_ACCOUNT: readonly string[] = [
   "ide",
 ];
 
-/** Claude Code's own state entries, as observed in v2.1.282 (Appendix A in docs/architecture.md). */
+/** Claude Code's own state entries, as observed up to v2.1.301 (Appendix A in docs/architecture.md). */
 export const APPENDIX_A: readonly string[] = [
   ".claude.json",
   ".claude.json.backup",
@@ -126,6 +126,7 @@ export const APPENDIX_A: readonly string[] = [
   "local-settings",
   "project-settings",
   "remote",
+  "remote-control",
   "scratch",
   "seed-admin",
   "storage-v2",
