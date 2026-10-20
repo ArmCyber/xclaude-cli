@@ -1,6 +1,6 @@
 {
   "name": "xclaude-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Run Claude Code under several claude.ai logins at once, with shared conversations and history",
   "keywords": [
     "claude",
