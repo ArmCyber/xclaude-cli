@@ -15,7 +15,7 @@ import { LAUNCH_LOCK_WAIT_MS, problemLine, repairAccount } from "../link/repair.
 import { shareTable } from "../link/table.ts";
 import { takeNewUnknown, unknownEntries, unknownNotice } from "../link/unknown.ts";
 import { buildArgs, hasFlag, needsHelp } from "./args.ts";
-import { buildEnv } from "./env.ts";
+import { buildEnv, takeCredentialNotes } from "./env.ts";
 import { settleInherit } from "./inherit-question.ts";
 import { pick, preselect } from "./picker.ts";
 
@@ -113,12 +113,13 @@ export async function launch(ctx: Ctx, config: Config, account: string, userArgs
   // 4. Environment.
   const env = buildEnv(ctx.env, { name: account, configDir: isMain ? null : accountDir(ctx.paths, account) });
 
-  // 6. Remember the account for this directory, and which unknown entries were reported.
+  // 6. Remember the account for this directory, and what was said about unknown entries and credentials.
   try {
     updateState(ctx.paths, (state) => {
       recordUse(state, ctx.cwd, account);
       const configLabel = tildify(ctx.paths.config, ctx.paths.home);
       for (const entry of takeNewUnknown(state, account, unknown)) ctx.io.err(`${unknownNotice(account, entry, configLabel)}\n`);
+      if (!isMain) for (const line of takeCredentialNotes(state, account, ctx.env)) ctx.io.err(`${line}\n`);
     });
   } catch {
     // The state is a convenience; never block a launch on it.

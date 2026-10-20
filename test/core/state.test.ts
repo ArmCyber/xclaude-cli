@@ -33,6 +33,7 @@ describe("state", () => {
     s.seenUnknownEntries.acme = ["foo"];
     s.listedPlugins.acme = ["foo@market"];
     s.inheritNoted = ["acme"];
+    s.credentialNoted.acme = ["ANTHROPIC_API_KEY"];
     saveState(paths, s);
     assert.deepEqual(loadState(paths), s);
     assert.equal(fs.statSync(paths.state).mode & 0o777, 0o600);
@@ -58,12 +59,14 @@ describe("state", () => {
     s.seenUnknownEntries.acme = ["foo"];
     s.listedPlugins.acme = ["foo@market"];
     s.inheritNoted = ["acme", "other"];
+    s.credentialNoted = { acme: ["ANTHROPIC_API_KEY"], other: ["CLAUDE_CODE_OAUTH_TOKEN"] };
     forgetAccount(s, "acme");
     assert.deepEqual(s.lastAccountByDir, { "/y": "other" });
     assert.equal(s.lastUsedAccount, null);
     assert.deepEqual(s.seenUnknownEntries, {});
     assert.deepEqual(s.listedPlugins, {});
     assert.deepEqual(s.inheritNoted, ["other"]);
+    assert.deepEqual(s.credentialNoted, { other: ["CLAUDE_CODE_OAUTH_TOKEN"] });
   });
 
   it("updateState reads, changes and writes", () => {

@@ -14,6 +14,8 @@ export interface State {
   turnedOnPlugins: Record<string, string[]>;
   /** Accounts told, at a launch without a terminal, how to choose whether they take ~/.claude's setup. */
   inheritNoted: string[];
+  /** Per account, the credential variables in the shell its launches have mentioned (launch/env.ts). */
+  credentialNoted: Record<string, string[]>;
 }
 
 /** lastAccountByDir keeps the most recently used directories only. */
@@ -28,6 +30,7 @@ export function emptyState(): State {
     listedPlugins: {},
     turnedOnPlugins: {},
     inheritNoted: [],
+    credentialNoted: {},
   };
 }
 
@@ -56,7 +59,7 @@ export function loadState(paths: Paths): State {
       if (Array.isArray(entries)) state.seenUnknownEntries[name] = entries.filter((e) => typeof e === "string");
     }
   }
-  for (const key of ["listedPlugins", "turnedOnPlugins"] as const) {
+  for (const key of ["listedPlugins", "turnedOnPlugins", "credentialNoted"] as const) {
     const lists = raw[key];
     if (!isRecord(lists)) continue;
     for (const [name, ids] of Object.entries(lists)) {
@@ -99,4 +102,5 @@ export function forgetAccount(state: State, account: string): void {
   delete state.listedPlugins[account];
   delete state.turnedOnPlugins[account];
   state.inheritNoted = state.inheritNoted.filter((name) => name !== account);
+  delete state.credentialNoted[account];
 }

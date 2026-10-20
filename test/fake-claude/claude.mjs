@@ -3,6 +3,8 @@
 // JSON line in $FAKE_CLAUDE_LOG and answers a few subcommands from fixtures.
 //
 // Login state lives in <config dir>/.credentials.json ({ email, orgId, orgName }).
+// As in Claude Code, ANTHROPIC_API_KEY and then CLAUDE_CODE_OAUTH_TOKEN in the
+// environment come before it in `auth status`.
 // Knobs, all optional:
 //   FAKE_CLAUDE_LOGIN   JSON login written on an interactive launch (like /login)
 //   FAKE_CLAUDE_AGENTS  path of a JSON file printed by `agents --json`
@@ -41,10 +43,11 @@ function readLogin() {
 }
 
 function authStatus() {
-  const login = readLogin();
+  const fromEnv = env.ANTHROPIC_API_KEY ? "api_key" : env.CLAUDE_CODE_OAUTH_TOKEN ? "oauth_token" : null;
+  const login = fromEnv ? null : readLogin();
   const status = {
-    loggedIn: Boolean(login),
-    authMethod: login ? "claude.ai" : "none",
+    loggedIn: Boolean(fromEnv || login),
+    authMethod: fromEnv ?? (login ? "claude.ai" : "none"),
     apiProvider: "firstParty",
     analyticsDisabled: false,
     projectsDirectory: path.join(configDir, "projects"),
@@ -57,11 +60,11 @@ function authStatus() {
     status.subscriptionType = login.subscriptionType ?? "max";
   }
   if (args.includes("--text")) {
-    process.stdout.write(login ? `Logged in as ${login.email}\n` : "Not logged in\n");
+    process.stdout.write(login ? `Logged in as ${login.email}\n` : fromEnv ? `Logged in (${fromEnv})\n` : "Not logged in\n");
   } else {
     process.stdout.write(JSON.stringify(status, null, 2) + "\n");
   }
-  process.exit(login ? 0 : 1);
+  process.exit(status.loggedIn ? 0 : 1);
 }
 
 function waitForSignal() {

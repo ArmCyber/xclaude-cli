@@ -180,6 +180,17 @@ describe("doctor", () => {
     assert.match(res.stdout, /! CLAUDE_CODE_EFFORT_LEVEL is set \(low\); it overrides the effort level saved in every account's settings/);
   });
 
+  it("notes the claude.ai login accounts don't get, and warns about credentials that stand in for their logins", () => {
+    let res = doctor([], { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat01-shell" });
+    assert.match(res.stdout, /· CLAUDE_CODE_OAUTH_TOKEN is set: accounts don't get it, so each signs in with its own login \(plain claude still uses it\)/);
+    assert.match(res.stdout, /acme {2}a@acme\.com/, "acme still shows its own login");
+    assert.match(res.stdout, /✓ nothing that overrides accounts/);
+    res = doctor([], { ANTHROPIC_API_KEY: "sk-ant-api03-shell", CLAUDE_CODE_USE_BEDROCK: "1" });
+    assert.match(res.stdout, /! ANTHROPIC_API_KEY is set, so Claude Code may use it instead of each account's own login; unset it in your shell profile to stop that/);
+    assert.match(res.stdout, /! CLAUDE_CODE_USE_BEDROCK is set, so Claude Code may use it instead of each account's own login/);
+    assert.match(res.stdout, /acme {2}an API key/);
+  });
+
   it("notes removed accounts' leftover folders, and warns about folders that aren't one", () => {
     fs.mkdirSync(path.join(sb.xhome, "accounts", "old"));
     fs.symlinkSync(sb.store, path.join(sb.xhome, "accounts", "old", "projects"));

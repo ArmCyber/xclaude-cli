@@ -104,6 +104,14 @@ describe("add", () => {
     assert.doesNotMatch(other.stderr, /warning/, "same email in another org is fine");
   });
 
+  it("says when the account signs in with a credential from the shell, without calling it a shared login", () => {
+    const shell = { ANTHROPIC_API_KEY: "sk-ant-api03-shell" };
+    sb.run(["add", "acme"], { env: shell });
+    const res = sb.run(["add", "again"], { env: shell });
+    assert.match(res.stderr, /xclaude: again signs in with an API key, not a claude\.ai login\. Launch it with: xclaude again/);
+    assert.doesNotMatch(res.stderr, /use the same login/);
+  });
+
   it("validates before creating anything", () => {
     for (const [args, re] of [
       [["add"], /usage: xclaude add <name>/],
@@ -216,6 +224,17 @@ describe("ls", () => {
     assert.match(out[1]!, new RegExp(`^acme\\s+a@acme\\.com \\(Org One\\)\\s+opus\\s+–\\s+--chrome\\s+${accDir("acme")}$`));
     assert.match(out[2]!, new RegExp(`^personal\\s+not logged in\\s+–\\s+–\\s+–\\s+${accDir("personal")}$`));
     assert.match(out[3]!, /^main\s+not logged in .*\.claude \(no CLAUDE_CONFIG_DIR\)$/);
+  });
+
+  it("shows each account's own login, or the credential that stands in for it", () => {
+    sb.run(["add", "acme"], { env: { FAKE_CLAUDE_LOGIN: login("a@acme.com") } });
+    sb.run(["add", "personal"]);
+    let out = sb.run(["ls"], { env: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat01-shell" } }).stdout.split("\n");
+    assert.match(out[1]!, /^acme\s+a@acme\.com \(Org One\)\s/, "the shell's claude.ai login doesn't reach accounts");
+    assert.match(out[2]!, /^personal\s+not logged in\s/);
+    out = sb.run(["ls"], { env: { ANTHROPIC_API_KEY: "sk-ant-api03-shell" } }).stdout.split("\n");
+    assert.match(out[1]!, /^acme\s+an API key\s/);
+    assert.match(out[2]!, /^personal\s+an API key\s/);
   });
 });
 

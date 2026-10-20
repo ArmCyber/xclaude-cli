@@ -34,6 +34,10 @@ has on and the MCP servers in ~/.claude.json. Its first launch in a terminal
 asks; set <name> --inherit on|off changes the answer. A plugin installed under
 another login shows in /plugin: on when the account takes ~/.claude's setup
 and ~/.claude has it on, otherwise off.
+
+Each account signs in with its own login: a CLAUDE_CODE_OAUTH_TOKEN in your
+shell is left out of accounts, and a launch says once when ANTHROPIC_API_KEY or
+another credential there may stand in for the account's login.
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -76,7 +80,9 @@ confirmation.
 
 Lists the accounts with their email, organization and login status, their
 defaults, and each one's config dir (the CLAUDE_CONFIG_DIR to use elsewhere,
-e.g. in an editor's environment settings).
+e.g. in an editor's environment settings). When Claude Code signs an account
+in with something else, such as an ANTHROPIC_API_KEY in your shell, LOGIN
+names it.
 `,
   set: `Usage: xclaude set <name> [--model M] [--effort E] [--args "…"]
                    [--unset model|effort|args] [--inherit on|off|reset]

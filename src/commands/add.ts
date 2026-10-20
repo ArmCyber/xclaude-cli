@@ -1,6 +1,6 @@
 // xclaude add <name> [--model M] [--effort E] [--args "…"] [--inherit on|off]
 import fs from "node:fs";
-import { authStatus, describeLogin } from "../claude/auth.ts";
+import { authStatus, describeLogin, otherCredential } from "../claude/auth.ts";
 import { findClaude } from "../claude/resolve.ts";
 import { accountNameProblem, type Config, type Defaults, identities, loadConfig, saveConfig } from "../core/config.ts";
 import { EXIT_OK, UsageError, XError } from "../core/errors.ts";
@@ -67,14 +67,16 @@ export async function addCommand(ctx: Ctx, config: Config, args: string[]): Prom
     log(`xclaude: ${name} isn't logged in yet. Log in later with \`xclaude ${name} auth login\`, or /login inside \`xclaude ${name}\`.`);
     return EXIT_OK;
   }
-  log(`xclaude: ${name} is logged in as ${describeLogin(status)}. Launch it with: xclaude ${name}`);
+  const credential = otherCredential(status);
+  if (credential) log(`xclaude: ${name} signs in with ${credential}, not a claude.ai login. Launch it with: xclaude ${name}`);
+  else log(`xclaude: ${name} is logged in as ${describeLogin(status)}. Launch it with: xclaude ${name}`);
 
   // The same login as another identity is almost always a mistake.
   const others = identities(config).filter((n) => n !== name);
   const theirs = await Promise.all(others.map((n) => authStatus(claude, identityEnv(ctx, n))));
   others.forEach((other, i) => {
     const s = theirs[i]!;
-    if (s.loggedIn && s.email === status.email && s.orgId === status.orgId) {
+    if (status.email && s.loggedIn && s.email === status.email && s.orgId === status.orgId) {
       log(`xclaude: warning: ${name} and ${other} use the same login (${describeLogin(status)})`);
     }
   });

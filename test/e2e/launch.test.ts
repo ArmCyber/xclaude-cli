@@ -86,6 +86,24 @@ describe("launch, end to end", () => {
     assert.equal(sb.fakeCalls()[0]!.env.CLAUDE_SECURESTORAGE_CONFIG_DIR, undefined);
   });
 
+  it("leaves a claude.ai login in the shell out of an account, and says once what may stand in for its login", () => {
+    const shell = { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat01-shell", ANTHROPIC_API_KEY: "sk-ant-api03-shell" };
+    let res = sb.run(["other", "-p", "hi"], { env: shell });
+    assert.equal(res.status, 0, res.stderr);
+    const env = sb.fakeCalls().at(-1)!.env;
+    assert.equal(env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
+    assert.equal(env.ANTHROPIC_API_KEY, "sk-ant-api03-shell", "other credentials are passed on");
+    assert.match(res.stderr, /xclaude: other signs in with its own login, so CLAUDE_CODE_OAUTH_TOKEN from your shell is left out/);
+    assert.match(res.stderr, /xclaude: ANTHROPIC_API_KEY is set in your shell, so Claude Code may use it instead of other's own login/);
+    res = sb.run(["other", "-p", "hi"], { env: shell });
+    assert.doesNotMatch(res.stderr, /CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY/, "said once");
+
+    sb.run(["set", "main", "--enable"]);
+    res = sb.run(["main", "-p", "hi"], { env: shell });
+    assert.equal(sb.fakeCalls().at(-1)!.env.CLAUDE_CODE_OAUTH_TOKEN, "sk-ant-oat01-shell", "main is plain claude's login");
+    assert.doesNotMatch(res.stderr, /CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY/);
+  });
+
   it("uses the spawn fallback when switched on", () => {
     const res = sb.run(["other", "-p", "x"], { env: { XCLAUDE_SWITCHES: "spawnFallback=1", FAKE_CLAUDE_EXIT: "3" } });
     assert.equal(res.status, 3);

@@ -75,6 +75,15 @@ describe("fake claude", () => {
     assert.equal(res.status, 1);
   });
 
+  it("puts a credential from the environment before the saved login, as Claude Code does", () => {
+    const dir = path.join(sb.root, "acct");
+    fakeLogin(dir, { email: "a@example.com", orgId: "org-a" });
+    let status = JSON.parse(sb.spawn("claude", ["auth", "status"], { env: { CLAUDE_CONFIG_DIR: dir, CLAUDE_CODE_OAUTH_TOKEN: "t" } }).stdout);
+    assert.deepEqual([status.loggedIn, status.authMethod, status.email], [true, "oauth_token", undefined]);
+    status = JSON.parse(sb.spawn("claude", ["auth", "status"], { env: { CLAUDE_CONFIG_DIR: dir, CLAUDE_CODE_OAUTH_TOKEN: "t", ANTHROPIC_API_KEY: "k" } }).stdout);
+    assert.equal(status.authMethod, "api_key");
+  });
+
   it("logs in on an interactive launch when asked to", () => {
     const dir = path.join(sb.root, "fresh");
     const login = JSON.stringify({ email: "b@example.com", orgId: "org-b" });

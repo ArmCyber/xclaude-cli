@@ -13,7 +13,7 @@ import { parseOptions } from "../core/options.ts";
 import { accountDir, tildify } from "../core/paths.ts";
 import { loadState } from "../core/state.ts";
 import type { Ctx } from "../ctx.ts";
-import { identityEnv } from "../launch/env.ts";
+import { CREDENTIAL_VARS, identityEnv, LOGIN_VARS, setIn } from "../launch/env.ts";
 import { setupPreview } from "../launch/inherit-question.ts";
 import { inheritable, inheritSettings, inheritStatus, mainSettings } from "../link/inherit.ts";
 import { mcpServersFor } from "../link/mcp.ts";
@@ -335,6 +335,15 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
   }
   if (ctx.env.CLAUDE_CODE_EFFORT_LEVEL) {
     report.add("warn", `CLAUDE_CODE_EFFORT_LEVEL is set (${ctx.env.CLAUDE_CODE_EFFORT_LEVEL}); it overrides the effort level saved in every account's settings`);
+    envFindings++;
+  }
+  const dropped = setIn(ctx.env, LOGIN_VARS);
+  if (dropped.length) {
+    const [is, it] = dropped.length === 1 ? ["is", "it"] : ["are", "them"];
+    report.add("info", `${dropped.join(", ")} ${is} set: accounts don't get ${it}, so each signs in with its own login (plain claude still uses ${it})`);
+  }
+  for (const name of setIn(ctx.env, CREDENTIAL_VARS)) {
+    report.add("warn", `${name} is set, so Claude Code may use it instead of each account's own login; unset it in your shell profile to stop that`);
     envFindings++;
   }
   if (!envFindings) report.add("ok", "nothing that overrides accounts");
