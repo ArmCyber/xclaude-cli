@@ -22,6 +22,8 @@ export interface Switches {
   normalizePaths: boolean;
   /** Spike 14: `rm` skips logout when another identity uses the same email (off: spike 14 showed it's safe). */
   keepSameEmailLogin: boolean;
+  /** Spike 15: accounts keep auto memory in ~/.claude itself (CLAUDE_CODE_REMOTE_MEMORY_DIR), not through their links. */
+  memoryInStore: boolean;
 }
 
 export const SWITCHES: Readonly<Switches> = {
@@ -34,6 +36,7 @@ export const SWITCHES: Readonly<Switches> = {
   linkIde: false,
   normalizePaths: false,
   keepSameEmailLogin: false,
+  memoryInStore: true,
 };
 
 /** The built-in switches with XCLAUDE_SWITCHES applied; unknown names are ignored. */

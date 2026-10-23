@@ -342,6 +342,10 @@ export async function doctorCommand(ctx: Ctx, args: string[]): Promise<number> {
     const [is, it] = dropped.length === 1 ? ["is", "it"] : ["are", "them"];
     report.add("info", `${dropped.join(", ")} ${is} set: accounts don't get ${it}, so each signs in with its own login (plain claude still uses ${it})`);
   }
+  const memory = ctx.env.CLAUDE_CODE_REMOTE_MEMORY_DIR;
+  if (memory && memory !== ctx.paths.store) {
+    report.add("info", `CLAUDE_CODE_REMOTE_MEMORY_DIR is set (${memory}): accounts keep it, so their memory goes there, as plain claude's does`);
+  }
   for (const name of setIn(ctx.env, CREDENTIAL_VARS)) {
     report.add("warn", `${name} is set, so Claude Code may use it instead of each account's own login; unset it in your shell profile to stop that`);
     envFindings++;

@@ -81,6 +81,13 @@ describe("launch, end to end", () => {
     assert.equal(fs.readlinkSync(path.join(dir, "history.jsonl")), path.join(sb.store, "history.jsonl"));
   });
 
+  it("keeps an account's memory in ~/.claude, and under its config dir when switched off", () => {
+    sb.run(["other", "-p", "x"]);
+    assert.equal(sb.fakeCalls().at(-1)!.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, sb.store);
+    sb.run(["other", "-p", "x"], { env: { XCLAUDE_SWITCHES: "memoryInStore=0" } });
+    assert.equal(sb.fakeCalls().at(-1)!.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, undefined);
+  });
+
   it("drops an inherited CLAUDE_SECURESTORAGE_CONFIG_DIR", () => {
     sb.run(["other"], { env: { CLAUDE_SECURESTORAGE_CONFIG_DIR: "/somewhere" } });
     assert.equal(sb.fakeCalls()[0]!.env.CLAUDE_SECURESTORAGE_CONFIG_DIR, undefined);

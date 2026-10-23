@@ -28,6 +28,7 @@ describe("tmux client, pure parts", () => {
       XCLAUDE_ACCOUNT: "acme",
       CLAUDE_CODE_CHILD_SESSION: "1",
       CLAUDE_SECURESTORAGE_CONFIG_DIR: "/y",
+      CLAUDE_CODE_REMOTE_MEMORY_DIR: "/h/.claude",
       CLAUDECODE: "1",
       CLAUDE_CODE_MESSAGING_SOCKET: "/run/sock",
       CLAUDE_CODE_USE_BEDROCK: "1",

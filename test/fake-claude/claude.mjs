@@ -16,7 +16,9 @@
 // With FAKE_CLAUDE_CONVERSE=1 and -p it keeps a tiny conversation per session under <config dir>/projects,
 // like Claude Code: -c continues the newest one in the directory, -r <id> any
 // one. "Remember the word X" is answered with OK, "which word" with X. The spike
-// suite's rehearsal uses this to check that conversations cross accounts.
+// suite's rehearsal uses this to check that conversations cross accounts. "Save …
+// to your auto memory … the spike marker is X" writes a memory file where Claude
+// Code keeps auto memory, under CLAUDE_CODE_REMOTE_MEMORY_DIR when it's set.
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -137,7 +139,7 @@ function printMode() {
     if (i < 0) return undefined;
     return args[i].includes("=") ? args[i].slice(args[i].indexOf("=") + 1) : args[i + 1];
   };
-  const valueFlags = new Set(["--model", "--effort", "--output-format", "--debug-file", "-r", "--resume", "--allowedTools", "--allowed-tools", "--add-dir", "--settings"]);
+  const valueFlags = new Set(["--model", "--effort", "--output-format", "--debug-file", "-r", "--resume", "--allowedTools", "--allowed-tools", "--add-dir", "--settings", "--permission-mode"]);
   let prompt = "";
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -173,8 +175,17 @@ function printMode() {
   const history = fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
   const said = history.map((e) => e.message?.content ?? "").join("\n");
   const remembered = [...said.matchAll(/[Rr]emember the word (\S+?)[.,!]?(?:\s|$)/g)].at(-1)?.[1];
-  const result = /which word|what word/i.test(prompt) ? (remembered ?? "I don't know") : "OK";
+  const marker = /auto memory/i.test(prompt) ? /marker is (\S+?)[.,!]?(?:\s|$)/.exec(prompt)?.[1] : undefined;
+  const result = marker ? "DONE" : /which word|what word/i.test(prompt) ? (remembered ?? "I don't know") : "OK";
   fs.appendFileSync(file, `${JSON.stringify({ type: "user", sessionId: id, entrypoint: "sdk-cli", message: { role: "user", content: prompt } })}\n`);
+  if (marker) {
+    const memory = path.join(env.CLAUDE_CODE_REMOTE_MEMORY_DIR || configDir, "projects", process.cwd().replace(/[^a-zA-Z0-9]/g, "-"), "memory");
+    const input = { file_path: path.join(memory, "spike_marker.md"), content: `---\nname: spike-marker\n---\n${marker}\n` };
+    fs.mkdirSync(memory, { recursive: true });
+    fs.writeFileSync(input.file_path, input.content);
+    const write = { type: "assistant", sessionId: id, timestamp: new Date().toISOString(), message: { role: "assistant", content: [{ type: "tool_use", name: "Write", input }] } };
+    fs.appendFileSync(file, `${JSON.stringify(write)}\n`);
+  }
   fs.appendFileSync(file, `${JSON.stringify({ type: "assistant", sessionId: id, entrypoint: "sdk-cli", message: { role: "assistant", content: result } })}\n`);
   const debugFile = flag("--debug-file");
   if (debugFile) fs.writeFileSync(debugFile, `[DEBUG] fake claude, session ${id}\n`);

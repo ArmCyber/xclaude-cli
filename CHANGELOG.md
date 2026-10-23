@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Accounts save Claude's auto memory straight into `~/.claude`, the folder plain `claude` uses, so saving a memory no longer asks for permission, in auto mode or any other. From Claude Code 2.1.280 on, a save through an account's link into `~/.claude` waited for a person's yes. Plan mode in an account still asks before it saves a plan file.
+
 ## 0.2.1 (2026-10-20)
 
 - Accounts no longer get a claude.ai login from the shell (`CLAUDE_CODE_OAUTH_TOKEN` and the variables that provision one). Claude Code used it in place of every account's own login, so one ended subscription stopped them all. `main` still gets it.

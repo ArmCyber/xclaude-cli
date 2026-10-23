@@ -15,7 +15,7 @@ import { LAUNCH_LOCK_WAIT_MS, problemLine, repairAccount } from "../link/repair.
 import { shareTable } from "../link/table.ts";
 import { takeNewUnknown, unknownEntries, unknownNotice } from "../link/unknown.ts";
 import { buildArgs, hasFlag, needsHelp } from "./args.ts";
-import { buildEnv, takeCredentialNotes } from "./env.ts";
+import { buildEnv, sharedMemoryDir, takeCredentialNotes } from "./env.ts";
 import { settleInherit } from "./inherit-question.ts";
 import { pick, preselect } from "./picker.ts";
 
@@ -111,7 +111,8 @@ export async function launch(ctx: Ctx, config: Config, account: string, userArgs
   const mcp = isMain ? null : mcpForLaunch(ctx, settled, account, defaults, userArgs, help);
   const args = [...(mcp ? [`--mcp-config=${mcp}`] : []), ...buildArgs(defaults, userArgs, help)];
   // 4. Environment.
-  const env = buildEnv(ctx.env, { name: account, configDir: isMain ? null : accountDir(ctx.paths, account) });
+  const memoryDir = sharedMemoryDir(ctx.paths, shareTable(settled, ctx.switches), ctx.switches);
+  const env = buildEnv(ctx.env, { name: account, configDir: isMain ? null : accountDir(ctx.paths, account), memoryDir });
 
   // 6. Remember the account for this directory, and what was said about unknown entries and credentials.
   try {

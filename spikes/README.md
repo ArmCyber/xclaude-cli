@@ -26,6 +26,7 @@ Everything runs under a scratch `HOME`, with the package installed into a scratc
 | 12 | Claude Code's storage backend isn't active | **go/no-go**: adapt the share table and the merges |
 | 13 | Plugins installed from a load in b after a's folder is gone, and b reopens a's saved large output through the links `rm` keeps | plugins: `normalizePaths` on; outputs: stop and decide |
 | 14 | Logging out one login leaves the same user's other logins working (`--with 14`) | `keepSameEmailLogin` on |
+| 15 | An account saves an auto memory into `~/.claude`'s own memory folder for the project, the one plain `claude` uses, without a permission question (print mode, where a question is refused) | `memoryInStore` off |
 
 Spike 10 (links survive daily use) has no run of its own: each launch repairs a link Claude Code replaced, and `xclaude doctor` reports one.
 

@@ -191,6 +191,14 @@ describe("doctor", () => {
     assert.match(res.stdout, /acme {2}an API key/);
   });
 
+  it("notes a memory folder named in the shell, which accounts keep", () => {
+    let res = doctor([], { CLAUDE_CODE_REMOTE_MEMORY_DIR: "/somewhere/memory" });
+    assert.match(res.stdout, /· CLAUDE_CODE_REMOTE_MEMORY_DIR is set \(\/somewhere\/memory\): accounts keep it, so their memory goes there, as plain claude's does/);
+    assert.match(res.stdout, /✓ nothing that overrides accounts/);
+    res = doctor([], { CLAUDE_CODE_REMOTE_MEMORY_DIR: sb.store });
+    assert.doesNotMatch(res.stdout, /CLAUDE_CODE_REMOTE_MEMORY_DIR/, "accounts keep their memory in ~/.claude anyway");
+  });
+
   it("notes removed accounts' leftover folders, and warns about folders that aren't one", () => {
     fs.mkdirSync(path.join(sb.xhome, "accounts", "old"));
     fs.symlinkSync(sb.store, path.join(sb.xhome, "accounts", "old", "projects"));

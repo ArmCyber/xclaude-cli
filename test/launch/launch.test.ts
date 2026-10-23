@@ -31,13 +31,29 @@ describe("launch", () => {
     assert.deepEqual(call!.argv, [ctx.claude, "--add-dir=/a", "--add-dir=/b", "--chrome", "--model", "opus", "--effort", "max", "-c", "fix the bug"]);
   });
 
-  it("sets the environment: config dir, account name, no Keychain override, everything else inherited", async () => {
+  it("sets the environment: config dir, account name, memory in ~/.claude, no Keychain override, everything else inherited", async () => {
     await main(["acme"], ctx);
     const env = ctx.execs[0]!.env;
     assert.equal(env.CLAUDE_CONFIG_DIR, acmeDir());
     assert.equal(env.XCLAUDE_ACCOUNT, "acme");
+    assert.equal(env.CLAUDE_CODE_REMOTE_MEMORY_DIR, ctx.paths.store);
     assert.equal(env.CLAUDE_SECURESTORAGE_CONFIG_DIR, undefined);
     assert.equal(env.KEEP_ME, "1");
+  });
+
+  it("leaves memory under the config dir while projects isn't shared, and with memoryInStore off", async () => {
+    ctx.setConfig((c) => {
+      c.accounts.acme = { model: null, effort: null, args: [] };
+      c.share.remove = ["projects"];
+    });
+    await main(["acme"], ctx);
+    assert.equal(ctx.execs[0]!.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, undefined);
+    ctx.setConfig((c) => {
+      c.accounts.acme = { model: null, effort: null, args: [] };
+    });
+    ctx.switches.memoryInStore = false;
+    await main(["acme"], ctx);
+    assert.equal(ctx.execs[1]!.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, undefined);
   });
 
   it("lets the user's --model and --effort win", async () => {
@@ -71,6 +87,7 @@ describe("launch", () => {
     const call = ctx.execs[0]!;
     assert.deepEqual(call.argv.slice(1), ["--model", "haiku", "-p", "hi"]);
     assert.equal(call.env.CLAUDE_CONFIG_DIR, undefined);
+    assert.equal(call.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, undefined);
     assert.equal(call.env.XCLAUDE_ACCOUNT, "main");
     assert.equal(fs.existsSync(ctx.paths.accounts), false);
     assert.equal(fs.existsSync(ctx.paths.store), false, "the link engine never runs for main");

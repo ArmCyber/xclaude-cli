@@ -627,6 +627,50 @@ async function spike13(s: Suite, fx: Fixture): Promise<void> {
   s.record(13, "account-dir paths in shared files", verdict, ev);
 }
 
+/**
+ * An account saves an auto memory as plain claude does: into ~/.claude's own memory folder for the
+ * project, with a write that needs nobody's yes. Print mode can't ask, so a write that Claude Code
+ * wants a person to approve is refused there (permission_denials) instead of waiting.
+ */
+async function spike15(s: Suite): Promise<void> {
+  const ev: string[] = [];
+  const marker = `memo-${s.runId}`;
+  // Plain claude's memory folder for w3, which isn't in a git repository, so its path is the key.
+  const memory = path.join(s.store, "projects", s.work.w3.replace(/[^a-zA-Z0-9]/g, "-"), "memory");
+  const since = new Date().toISOString();
+  const r = s.prompt("a", `Save this to your auto memory now, as a new memory file: the spike marker is ${marker}. Reply with just DONE.`, {
+    cwd: s.work.w3,
+    extra: ["--permission-mode", "default"],
+  });
+  let denials: Array<{ tool_name?: string; tool_input?: unknown }> = [];
+  try {
+    denials = (JSON.parse(r.run.stdout.trim().split("\n").at(-1) ?? "") as { permission_denials?: typeof denials }).permission_denials ?? [];
+  } catch {
+    // no JSON result; the reply below shows what came back
+  }
+  const saved = filesContaining(memory, marker).map((f) => path.relative(s.store, f));
+  const writes = r.sessionId ? turnsSince(s, r.sessionId, since).flatMap((t) => t.tools).filter((t) => /^(Write|Edit)\b/.test(t)) : [];
+  // Written by the store's own path, not through the account's projects link.
+  const direct = writes.some((w) => w.includes(path.join(s.store, "projects")));
+  ev.push(`a's reply: ${JSON.stringify(r.text.slice(0, 80))}`);
+  ev.push(`a's file writes: ${writes.join("; ") || "none"}`);
+  ev.push(`memory files holding the marker in ~/.claude's memory folder for w3: ${saved.join(", ") || "none"}`);
+  if (denials.length) ev.push(`permission denials: ${denials.map((d) => `${d.tool_name ?? "?"} ${JSON.stringify(d.tool_input).slice(0, 160)}`).join("; ")}`);
+  let status: "pass" | "fail" | "manual" = saved.length && direct && !denials.length ? "pass" : "manual";
+  if (denials.some((d) => d.tool_name === "Write" || d.tool_name === "Edit")) {
+    status = "fail";
+    ev.push("The memory write waited for a person's yes, which print mode refuses: CLAUDE_CODE_REMOTE_MEMORY_DIR no longer does what F31 says. Switch memoryInStore off, and see F30 in docs/architecture.md.");
+  } else if (direct && !saved.length) {
+    status = "fail";
+    ev.push("a saved under ~/.claude/projects, but not in plain claude's folder for w3, so accounts' memory would split from plain claude's: switch memoryInStore off.");
+  } else if (saved.length && !direct) {
+    ev.push("a saved through its projects link without a question: Claude Code may accept such writes now (F30), so memoryInStore may not be needed any more.");
+  } else if (!saved.length) {
+    ev.push("a saved no memory file, so this proves nothing; run it again");
+  }
+  s.record(15, "memory saved without a question", status, ev);
+}
+
 async function spike5(s: Suite): Promise<void> {
   const skills = path.join(s.store, "skills");
   const local = path.join(skills, `local-${s.runId}`, "SKILL.md");
@@ -817,6 +861,7 @@ async function main(): Promise<number> {
         [4, () => spike4(s), false],
         [2, () => spike2(s), false],
         [13, () => spike13(s, fx), false],
+        [15, () => spike15(s), false],
         [5, () => spike5(s), true],
         [14, () => spike14(s), true],
       ];

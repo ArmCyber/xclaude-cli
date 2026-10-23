@@ -1,13 +1,30 @@
 // The environment claude runs with: everything inherited, then the account's
-// config dir, without an inherited Keychain override or claude.ai login.
+// config dir, without an inherited Keychain override or claude.ai login, and
+// with its memory kept in ~/.claude itself.
 import { MAIN } from "../core/config.ts";
 import { accountDir, type Env, type Paths } from "../core/paths.ts";
 import type { State } from "../core/state.ts";
+import type { ShareTable } from "../link/table.ts";
+import type { Switches } from "../switches.ts";
 
 export interface Identity {
   name: string;
   /** The account's CLAUDE_CONFIG_DIR, or null for the main identity (~/.claude). */
   configDir: string | null;
+  /** Where accounts keep their memory (sharedMemoryDir), or null to leave it under the config dir. */
+  memoryDir: string | null;
+}
+
+/**
+ * The folder Claude Code keeps auto memory and `memory: user` subagent memory
+ * in (CLAUDE_CODE_REMOTE_MEMORY_DIR, F31): ~/.claude itself, as for plain
+ * claude, while projects and agent-memory are shared. Reached through the
+ * account's links instead, every memory write would wait for a person's yes,
+ * even in auto mode (F30).
+ */
+export function sharedMemoryDir(paths: Paths, table: ShareTable, switches: Switches): string | null {
+  if (!switches.memoryInStore) return null;
+  return table.dirs.includes("projects") && table.dirs.includes("agent-memory") ? paths.store : null;
 }
 
 /**
@@ -52,16 +69,26 @@ export function buildEnv(base: Env, identity: Identity): Record<string, string> 
     env.CLAUDE_CONFIG_DIR = identity.configDir;
     // The account signs in with its own login, not one left in the shell (F29).
     for (const name of LOGIN_VARS) delete env[name];
-  } else delete env.CLAUDE_CONFIG_DIR;
+    // Its memory goes straight into ~/.claude (F30); a folder the shell names wins, as it does for plain claude.
+    if (identity.memoryDir && !env.CLAUDE_CODE_REMOTE_MEMORY_DIR) env.CLAUDE_CODE_REMOTE_MEMORY_DIR = identity.memoryDir;
+  } else {
+    delete env.CLAUDE_CONFIG_DIR;
+    // An xclaude main started inside an account session would inherit the account's value; plain claude has none.
+    if (identity.memoryDir && env.CLAUDE_CODE_REMOTE_MEMORY_DIR === identity.memoryDir) delete env.CLAUDE_CODE_REMOTE_MEMORY_DIR;
+  }
   // An inherited value would point the account at another directory's credential (F21).
   delete env.CLAUDE_SECURESTORAGE_CONFIG_DIR;
   env.XCLAUDE_ACCOUNT = identity.name;
   return env;
 }
 
-/** The environment for running claude as an identity (the main identity leaves CLAUDE_CONFIG_DIR unset). */
+/**
+ * The environment for xclaude's own calls to claude as an identity (auth
+ * status, logout, agents --json); the main identity leaves CLAUDE_CONFIG_DIR
+ * unset. None of them touches memory, so it stays under the config dir.
+ */
 export function identityEnv(ctx: { env: Env; paths: Paths }, name: string): Record<string, string> {
-  return buildEnv(ctx.env, { name, configDir: name === MAIN ? null : accountDir(ctx.paths, name) });
+  return buildEnv(ctx.env, { name, configDir: name === MAIN ? null : accountDir(ctx.paths, name), memoryDir: null });
 }
 
 function joined(names: string[]): string {

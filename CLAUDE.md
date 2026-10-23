@@ -67,6 +67,7 @@ All in `src/switches.ts`, each default settled by a spike run. `XCLAUDE_SWITCHES
 | `linkIde` | off | 11 | on: link `ide` too |
 | `normalizePaths` | off | 13 | on: rewrite account-dir paths in the plugin registry |
 | `keepSameEmailLogin` | off | 14 | on: `rm` skips logout when another identity has the same email (spike 14 showed that's not needed) |
+| `memoryInStore` | on | 15 | off: accounts' memory goes through their links, so every save waits for a person's yes (F30) |
 
 ## Rules
 
@@ -105,5 +106,5 @@ git push --follow-tags                # the commit and its tag, after a successf
 
 1. Run `xclaude doctor` with a couple of accounts and look for new unknown entries (they also print once at launch).
 2. Compare Appendix A with the binary's own list of state entries: `node --experimental-strip-types scripts/claude-state-entries.ts [binary]` prints what's new and what's gone. New entries go into `APPENDIX_A` in `src/link/table.ts` (and Appendix A in `docs/architecture.md`), or into the share table if they should be shared.
-3. Rerun spikes 1, 4, 6 and 12: `node --experimental-strip-types spikes/run.ts --only 1,4,6,12`.
+3. Rerun spikes 1, 4, 6, 12 and 15: `node --experimental-strip-types spikes/run.ts --only 1,4,6,12,15`.
 4. Refresh the help fixture under a scratch home: `env -i HOME=$(mktemp -d) PATH=/usr/bin:/bin <binary> --help > test/fixtures/claude-help.txt`, then `npm run check`.
