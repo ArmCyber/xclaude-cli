@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 (2026-10-27)
 
 - Accounts save Claude's auto memory straight into `~/.claude`, the folder plain `claude` uses, so saving a memory no longer asks for permission, in auto mode or any other. From Claude Code 2.1.280 on, a save through an account's link into `~/.claude` waited for a person's yes. Plan mode in an account still asks before it saves a plan file.
+- Subagents with `memory: local` keep that memory in `~/.claude/projects/<project>/agent-memory-local/` in accounts, instead of the project's `.claude/agent-memory-local/`.
+- Brings 0.2.1's changes to npm too: 0.2.1 was tagged but never published.
 
 ## 0.2.1 (2026-10-20)
 
