@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { formatCreated } from "../../src/commands/tmux.ts";
 import { makeSandbox, type Sandbox } from "../helpers/sandbox.ts";
-import { needTmux, tmux, waitFor } from "../helpers/tmux.ts";
+import { hasTmux, needTmux, tmux, waitFor } from "../helpers/tmux.ts";
 
 describe("formatCreated", () => {
   it("shows the time today and the date before", () => {
@@ -23,7 +23,7 @@ describe("tmux sessions", () => {
     fs.writeFileSync(path.join(sb.xhome, "config.json"), JSON.stringify({ accounts: { acme: {}, beta: {} } }));
   });
   afterEach(() => {
-    tmux(sb, ["-L", "outer", "kill-server"]);
+    if (hasTmux(sb)) tmux(sb, ["-L", "outer", "kill-server"]);
     sb.cleanup();
   });
 

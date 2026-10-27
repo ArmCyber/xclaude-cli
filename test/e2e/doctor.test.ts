@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { fakeLogin, makeSandbox, type Sandbox } from "../helpers/sandbox.ts";
+import { hasTmux, needTmux } from "../helpers/tmux.ts";
 
 let sb: Sandbox;
 const login = (email: string, orgId = "org-1", orgName = "Org One") => JSON.stringify({ email, orgId, orgName });
@@ -21,16 +22,18 @@ afterEach(() => sb.cleanup());
 const doctor = (args: string[] = [], env: Record<string, string | undefined> = {}) => sb.run(["doctor", ...args], { env });
 
 describe("doctor", () => {
-  it("passes on a healthy setup", () => {
+  it("passes on a healthy setup", (t) => {
     const res = doctor();
     assert.equal(res.status, 0, res.stdout);
     assert.match(res.stdout, /^Tools\n {2}✓ claude 2\.1\.282 \(Claude Code\) at /);
-    assert.match(res.stdout, /✓ tmux \d+\.\d+/);
     assert.match(res.stdout, /✓ Node \d+/);
     assert.match(res.stdout, /Config\n {2}✓ ~\/\.xclaude\/config\.json/);
     assert.match(res.stdout, /Accounts\n {2}acme {2}a@acme\.com \(Org One\)\n {4}✓ links into ~\/\.claude/);
     assert.match(res.stdout, /Shell\n {2}✓ completion loaded from ~\/\.bashrc\n {2}· guard: off/);
     assert.match(res.stdout, /Environment\n {2}✓ nothing that overrides accounts/);
+    // Without tmux the setup isn't all good: doctor warns about it.
+    if (!needTmux(sb, t)) return;
+    assert.match(res.stdout, /✓ tmux \d+\.\d+/);
     assert.match(res.stdout, /\nAll good\.\n$/);
   });
 
@@ -61,7 +64,9 @@ describe("doctor", () => {
     assert.equal(res.status, 1);
     assert.match(res.stdout, /✗ skills links to \/somewhere\/else, not ~\/\.claude\/skills; `xclaude doctor --fix` replaces the link/);
     assert.match(res.stdout, /✗ plans not repaired yet; run `xclaude doctor --fix`/);
-    assert.match(res.stdout, /2 problems, 0 warnings\. Run `xclaude doctor --fix` to repair what can be repaired\./);
+    // A missing tmux is a warning.
+    const warnings = hasTmux(sb) ? "0 warnings" : "1 warning";
+    assert.match(res.stdout, new RegExp(`2 problems, ${warnings}\\. Run \`xclaude doctor --fix\` to repair what can be repaired\\.`));
     res = doctor(["--fix"]);
     assert.equal(res.status, 0, res.stdout);
     assert.match(res.stderr, /acme\/skills pointed to \/somewhere\/else; relinked to ~\/\.claude\/skills/);
